@@ -1,0 +1,25 @@
+{
+  "secrets": 1296,
+  "total_guesses": 5626,
+  "average": 4.341049382716049,
+  "maximum": 5,
+  "distribution": {
+    "4": 654,
+    "1": 1,
+    "3": 86,
+    "5": 547,
+    "2": 8
+  },
+  "unique_puzzles": {
+    "4": 415,
+    "3": 14,
+    "5": 547
+  },
+  "opening": [
+    0,
+    0,
+    1,
+    2
+  ],
+  "source": "Koyama and Lai, An Optimal Mastermind Strategy (1993), Table 1 with five-guess modification K."
+}

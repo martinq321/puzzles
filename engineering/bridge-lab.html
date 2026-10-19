@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bridge Lab — Truss Stress & Test to Failure</title>
+<style>
+:root{
+  --bg:#f5f7fa; --panel:#fff; --text:#172033; --muted:#667085; --border:#d6dbe4;
+  --accent:#315fb8; --accentbg:#eaf0ff; --tension:#2563eb; --compression:#dc3c3c;
+  --safe:#16835f; --warn:#d69218; --danger:#c92a2a; --dead:#9aa3b2; --joint:#172033;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1350px;margin:auto;padding:16px}
+h1{margin:0 0 4px;font-size:clamp(1.5rem,2.8vw,2.25rem)}
+.sub{margin:0 0 12px;color:var(--muted)}
+button,input,select{font:inherit}
+button{min-height:42px;padding:8px 12px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--text);font-weight:650;cursor:pointer}
+button:hover{background:#f0f3f7}
+button.active{background:var(--accentbg);border-color:var(--accent);color:#173d8a}
+button.danger{border-color:#e4b0b0;color:#9b1c1c}
+button:disabled{opacity:.42;cursor:not-allowed}
+.topbar,.modebar,.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.topbar,.modebar{margin:9px 0}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px}
+.canvas-card{padding:0;overflow:hidden}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.help{color:var(--muted);font-size:.9rem}
+.small{font-size:.82rem}
+.stats{display:grid;grid-template-columns:1fr auto;gap:6px 10px}
+.stats strong{text-align:right}
+.big{font-size:1.45rem;font-weight:760}
+hr{border:0;border-top:1px solid var(--border);margin:11px 0}
+label{font-weight:600}
+.control{display:grid;grid-template-columns:1fr auto;gap:7px 10px;align-items:center;margin:7px 0}
+.control input[type=number]{width:100px}
+.control input[type=range]{width:150px}
+input[type=number],select{min-height:38px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:#fff;color:var(--text)}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:700;font-size:.78rem}
+.safe{background:#e7f5ef;color:#126548}.warn{background:#fff3d6;color:#8c5a00}.fail{background:#fde7e7;color:#9d2020}
+.legend{display:flex;flex-wrap:wrap;gap:9px;color:var(--muted);font-size:.82rem}
+.linekey{width:22px;height:4px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:4px}
+.tablewrap{overflow:auto;max-height:230px;border:1px solid var(--border);border-radius:9px}
+table{border-collapse:collapse;width:100%;font-size:.8rem}
+th,td{padding:6px 7px;border-bottom:1px solid #edf0f4;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:#f8f9fb}
+.log{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;background:#111827;color:#e5e7eb;padding:9px;border-radius:9px;min-height:92px;max-height:160px;overflow:auto;white-space:pre-wrap}
+.note{background:#f4f6f8;border-radius:9px;padding:9px 10px;color:var(--muted);font-size:.86rem}
+#chart{border:1px solid var(--border);border-radius:9px;background:#fff}
+@media(max-width:950px){.layout{grid-template-columns:1fr}.control input[type=range]{width:130px}}
+</style>
+<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style></head>
+<body>
+<main>
+<nav class="mw-nav" aria-label="Site navigation"><a href="../index.html">← Home</a><a href="rigidity-2d.html">2D rigidity</a><a href="rigidity-3d.html">3D rigidity</a><a href="bridge-lab.html" aria-current="page">Bridge lab</a></nav>
+<h1>Bridge Lab — Truss Stress & Test to Failure</h1>
+<p class="sub">An original offline teaching simulator: build or modify a 2D pin-jointed truss, run a stiffness-method analysis, then raise the truck load until members yield, buckle, and the bridge becomes a mechanism.</p>
+
+<div class="topbar">
+  <button type="button" data-template="warren">Warren</button>
+  <button type="button" data-template="pratt">Pratt</button>
+  <button type="button" data-template="howe">Howe</button>
+  <button type="button" id="runBtn">Run analysis</button>
+  <button type="button" id="failBtn">▶ Test to failure</button>
+  <button type="button" id="stopBtn" disabled>Stop</button>
+  <button type="button" id="resetTestBtn">Reset test</button>
+  <button type="button" id="restoreBtn">Restore members</button>
+</div>
+
+<div class="modebar">
+  <button type="button" data-mode="select" class="active">Select / move</button>
+  <button type="button" data-mode="node">+ Node</button>
+  <button type="button" data-mode="member">+ / − Member</button>
+  <button type="button" id="pinBtn" disabled>Pin support</button>
+  <button type="button" id="rollerBtn" disabled>Roller support</button>
+  <button type="button" id="freeBtn" disabled>Remove support</button>
+  <button type="button" id="deckBtn" disabled>Toggle deck node</button>
+  <button type="button" id="deleteBtn" class="danger" disabled>Delete selected</button>
+</div>
+
+<div class="layout">
+<section>
+  <div class="card canvas-card">
+    <canvas id="bridge" width="1000" height="580" aria-label="Interactive truss bridge"></canvas>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="row">
+      <strong>Display:</strong>
+      <button type="button" id="tcBtn" class="active">Tension / compression</button>
+      <button type="button" id="utilBtn">Use of strength</button>
+      <label for="defScale">Deformation ×</label>
+      <input id="defScale" type="range" min="0" max="250" value="70" step="5">
+      <span id="defScaleVal" class="help">70×</span>
+    </div>
+    <div class="legend" style="margin-top:8px">
+      <span><i class="linekey" style="background:var(--tension)"></i>tension</span>
+      <span><i class="linekey" style="background:var(--compression)"></i>compression</span>
+      <span><i class="linekey" style="background:var(--dead)"></i>failed / removed</span>
+      <span>Dashed outline = undeformed shape</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Load vs deflection during failure test</strong>
+    <canvas id="chart" width="900" height="210"></canvas>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Failure log</strong>
+    <div id="log" class="log" aria-live="polite">Ready.</div>
+  </div>
+</section>
+
+<aside>
+  <div class="card">
+    <div class="small"><strong>Status</strong></div>
+    <div id="statusBig" class="big">Ready</div>
+    <div id="statusText" class="help">Choose a template or edit the bridge.</div>
+    <hr>
+    <div class="stats">
+      <span>Truck load</span><strong id="loadRead">0 kN</strong>
+      <span>Biggest force</span><strong id="forceRead">–</strong>
+      <span>Weakest member</span><strong id="weakRead">–</strong>
+      <span>Max sag</span><strong id="sagRead">–</strong>
+      <span>Bridge mass</span><strong id="massRead">–</strong>
+      <span>Max stress</span><strong id="stressRead">–</strong>
+      <span>Min safety factor</span><strong id="sfRead">–</strong>
+      <span>Members failed</span><strong id="failedRead">0</strong>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Truck & analysis</strong>
+    <div class="control"><label for="truckLoad">Truck weight</label><input id="truckLoad" type="number" min="0" step="5" value="100"></div>
+    <div class="control"><label for="truckPos">Truck position</label><input id="truckPos" type="range" min="0" max="100" step="1" value="50"></div>
+    <div class="control"><label for="axleSpacing">Axle spacing (m)</label><input id="axleSpacing" type="number" min="0" step=".5" value="4"></div>
+    <div class="control"><label for="selfWeight">Self-weight</label><input id="selfWeight" type="checkbox"></div>
+    <div class="control"><label for="speed">Failure-test speed</label>
+      <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Member material & section</strong>
+    <div class="control"><label for="material">Material</label>
+      <select id="material">
+        <option value="steel">Steel</option>
+        <option value="aluminium">Aluminium</option>
+        <option value="timber">Timber (simplified)</option>
+      </select>
+    </div>
+    <div class="control"><label for="diameter">Tube OD (mm)</label><input id="diameter" type="number" min="5" value="120"></div>
+    <div class="control"><label for="thickness">Wall (mm)</label><input id="thickness" type="number" min=".5" value="6" step=".5"></div>
+    <div class="control"><label for="kfactor">Buckling K</label><input id="kfactor" type="number" min=".25" value="1" step=".1"></div>
+    <button type="button" id="applyAll">Apply section/material to all members</button>
+    <p class="help small">Compression capacity is the lower of material yield and Euler buckling load. This is an ideal pin-jointed educational model.</p>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Selected item</strong>
+    <div id="selectedInfo" class="help" style="margin-top:7px">Click a member or node.</div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Most highly used members</strong>
+    <div class="tablewrap" style="margin-top:8px">
+      <table>
+        <thead><tr><th>Member</th><th>Force kN</th><th>Stress MPa</th><th>Use</th><th>Mode</th></tr></thead>
+        <tbody id="memberTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <strong>Key equations</strong>
+    <div class="help" style="margin-top:6px">
+      <div>Stress: <span class="key">σ = N/A</span></div>
+      <div>Euler buckling: <span class="key">Pcr = π²EI/(KL)²</span></div>
+      <div>Member stiffness: <span class="key">EA/L</span></div>
+      <div>Failure use: <span class="key">|N| / capacity</span></div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:12px">
+    Educational simulation only. It assumes ideal pin joints, linear-elastic small-deflection behaviour up to each member failure, simplified material properties, and no connection failure or local buckling.
+  </div>
+</aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const canvas=document.getElementById('bridge'),ctx=canvas.getContext('2d');
+const chart=document.getElementById('chart'),cctx=chart.getContext('2d');
+const logEl=document.getElementById('log');
+
+const ui={
+ statusBig:document.getElementById('statusBig'), statusText:document.getElementById('statusText'),
+ loadRead:document.getElementById('loadRead'), forceRead:document.getElementById('forceRead'),
+ weakRead:document.getElementById('weakRead'), sagRead:document.getElementById('sagRead'),
+ massRead:document.getElementById('massRead'), stressRead:document.getElementById('stressRead'),
+ sfRead:document.getElementById('sfRead'), failedRead:document.getElementById('failedRead'),
+ truckLoad:document.getElementById('truckLoad'), truckPos:document.getElementById('truckPos'),
+ axleSpacing:document.getElementById('axleSpacing'), selfWeight:document.getElementById('selfWeight'),
+ speed:document.getElementById('speed'), material:document.getElementById('material'),
+ diameter:document.getElementById('diameter'), thickness:document.getElementById('thickness'),
+ kfactor:document.getElementById('kfactor'), selectedInfo:document.getElementById('selectedInfo'),
+ memberTable:document.getElementById('memberTable'), defScale:document.getElementById('defScale'),
+ defScaleVal:document.getElementById('defScaleVal')
+};
+
+const materials={
+ steel:{name:'Steel',E:200e9,fy:250e6,rho:7850},
+ aluminium:{name:'Aluminium',E:69e9,fy:150e6,rho:2700},
+ timber:{name:'Timber',E:11e9,fy:30e6,rho:550}
+};
+
+let nodes=[],members=[],selected=null,mode='select',memberFirst=null;
+let draggingNode=null,lastPointer=null,display='tc';
+let result=null,running=false,timer=null,testLoad=0,testHistory=[];
+let initialDesign=null,templateName='Warren';
+
+function log(msg){
+  const stamp=new Date().toLocaleTimeString();
+  logEl.textContent += (logEl.textContent==='Ready.'?'':'\n') + '['+stamp+'] '+msg;
+  logEl.scrollTop=logEl.scrollHeight;
+}
+function clearLog(msg='Ready.'){logEl.textContent=msg;}
+
+function sectionProps(Dmm,tmm){
+  let D=Math.max(0.001,Dmm/1000),t=Math.max(0.0001,tmm/1000);
+  t=Math.min(t,D/2*0.999);
+  const d=Math.max(0,D-2*t);
+  return {
+    A:Math.PI/4*(D*D-d*d),
+    I:Math.PI/64*(D**4-d**4),
+    Dmm,tmm:t*1000
+  };
+}
+function newMember(a,b){
+  return {a,b,material:ui.material.value,D:+ui.diameter.value||120,t:+ui.thickness.value||6,K:+ui.kfactor.value||1,alive:true,failedAt:null};
+}
+function cloneDesign(){
+  return {nodes:nodes.map(n=>({...n})),members:members.map(m=>({...m}))};
+}
+function restoreDesign(d){
+  nodes=d.nodes.map(n=>({...n}));members=d.members.map(m=>({...m}));
+  selected=null;memberFirst=null;result=null;
+}
+
+function bottomNode(x,span){return {x,y:0,support:null,deck:true};}
+function topNode(x,y){return {x,y,support:null,deck:false};}
+
+function buildWarren(){
+  const span=30,panels=6,h=6;
+  nodes=[];
+  for(let i=0;i<=panels;i++)nodes.push(bottomNode(i*span/panels,span));
+  for(let i=0;i<panels;i++)nodes.push(topNode((i+.5)*span/panels,h));
+  nodes[0].support='pin';nodes[panels].support='roller';
+  const E=[];
+  for(let i=0;i<panels;i++)E.push([i,i+1]);
+  for(let i=0;i<panels-1;i++)E.push([7+i,7+i+1]);
+  for(let i=0;i<panels;i++){E.push([i,7+i],[7+i,i+1]);}
+  members=E.map(([a,b])=>newMember(a,b));
+}
+function buildPratt(reverse=false){
+  const span=30,panels=6,h=6;
+  nodes=[];
+  for(let i=0;i<=panels;i++)nodes.push(bottomNode(i*5,span));
+  for(let i=1;i<=5;i++)nodes.push(topNode(i*5,h));
+  nodes[0].support='pin';nodes[6].support='roller';
+  const E=[];
+  for(let i=0;i<6;i++)E.push([i,i+1]);
+  for(let i=0;i<4;i++)E.push([7+i,7+i+1]);
+  E.push([0,7],[11,6]);
+  for(let i=1;i<=5;i++)E.push([i,6+i]);
+  if(!reverse) E.push([7,2],[8,3],[10,3],[11,4]);
+  else E.push([1,8],[2,9],[4,9],[5,10]);
+  members=E.map(([a,b])=>newMember(a,b));
+}
+function loadTemplate(name){
+  stopTest();
+  templateName=name[0].toUpperCase()+name.slice(1);
+  if(name==='warren')buildWarren();
+  else if(name==='pratt')buildPratt(false);
+  else buildPratt(true);
+  selected=null;memberFirst=null;result=null;
+  initialDesign=cloneDesign();testHistory=[];testLoad=+ui.truckLoad.value||100;
+  clearLog(templateName+' template loaded.');
+  analyzeAndRender();
+}
+
+function bridgeBounds(){
+  if(!nodes.length)return {xmin:0,xmax:30,ymin:0,ymax:8};
+  let xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y);
+  let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);
+  if(xmax-xmin<1){xmin-=1;xmax+=1}
+  if(ymax-ymin<1){ymin-=1;ymax+=1}
+  return {xmin,xmax,ymin,ymax};
+}
+function transform(){
+  const b=bridgeBounds(),padX=65,padTop=55,padBot=115;
+  const sx=(canvas.width-2*padX)/(b.xmax-b.xmin);
+  const sy=(canvas.height-padTop-padBot)/(Math.max(1,b.ymax-b.ymin+2));
+  const s=Math.min(sx,sy);
+  const groundY=canvas.height-padBot;
+  return {s,x0:padX-b.xmin*s,y0:groundY+b.ymin*s,b};
+}
+function screen(n,uScale=0){
+  const T=transform();
+  let x=n.x,y=n.y;
+  if(result && uScale && n.index!=null){
+    x += result.u[2*n.index]*uScale;
+    y += result.u[2*n.index+1]*uScale;
+  }
+  return {x:T.x0+x*T.s,y:T.y0-y*T.s};
+}
+function modelFromScreen(px,py){
+  const T=transform();
+  return {x:(px-T.x0)/T.s,y:(T.y0-py)/T.s};
+}
+function pointer(e){
+  const r=canvas.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};
+}
+
+function gaussianSolve(A,b){
+  const n=b.length;
+  A=A.map(r=>r.slice()); b=b.slice();
+  for(let k=0;k<n;k++){
+    let p=k,max=Math.abs(A[k][k]);
+    for(let i=k+1;i<n;i++){const v=Math.abs(A[i][k]);if(v>max){max=v;p=i}}
+    if(max<1e-10)return null;
+    if(p!==k){[A[k],A[p]]=[A[p],A[k]];[b[k],b[p]]=[b[p],b[k]]}
+    const piv=A[k][k];
+    for(let i=k+1;i<n;i++){
+      const f=A[i][k]/piv;
+      if(Math.abs(f)<1e-20)continue;
+      A[i][k]=0;
+      for(let j=k+1;j<n;j++)A[i][j]-=f*A[k][j];
+      b[i]-=f*b[k];
+    }
+  }
+  const x=Array(n).fill(0);
+  for(let i=n-1;i>=0;i--){
+    let s=b[i];
+    for(let j=i+1;j<n;j++)s-=A[i][j]*x[j];
+    x[i]=s/A[i][i];
+  }
+  return x;
+}
+
+function deckNodes(){
+  return nodes.map((n,i)=>({...n,i})).filter(n=>n.deck).sort((a,b)=>a.x-b.x);
+}
+function addPointLoad(F, x, loadN){
+  const deck=deckNodes();
+  if(deck.length<2)return false;
+  x=Math.max(deck[0].x,Math.min(deck[deck.length-1].x,x));
+  let a=deck[0],b=deck[deck.length-1];
+  for(let i=0;i<deck.length-1;i++){
+    if(x>=deck[i].x && x<=deck[i+1].x){a=deck[i];b=deck[i+1];break;}
+  }
+  const L=Math.max(1e-12,b.x-a.x);
+  const t=(x-a.x)/L;
+  F[2*a.i+1]-=loadN*(1-t);
+  F[2*b.i+1]-=loadN*t;
+  return true;
+}
+
+function analyze(loadkN=+ui.truckLoad.value||0){
+  const N=nodes.length,nd=2*N;
+  if(N<2)return {ok:false,mechanism:true,message:'Not enough nodes.'};
+  nodes.forEach((n,i)=>n.index=i);
+  const K=Array.from({length:nd},()=>Array(nd).fill(0));
+  const F=Array(nd).fill(0);
+  let totalMass=0;
+
+  for(const m of members){
+    if(!m.alive)continue;
+    const a=nodes[m.a],b=nodes[m.b],dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);
+    if(L<1e-8)continue;
+    const mat=materials[m.material]||materials.steel;
+    const sec=sectionProps(m.D,m.t);
+    const c=dx/L,s=dy/L,k=mat.E*sec.A/L;
+    const ke=[
+      [ c*c, c*s,-c*c,-c*s],
+      [ c*s, s*s,-c*s,-s*s],
+      [-c*c,-c*s, c*c, c*s],
+      [-c*s,-s*s, c*s, s*s]
+    ];
+    const dofs=[2*m.a,2*m.a+1,2*m.b,2*m.b+1];
+    for(let i=0;i<4;i++)for(let j=0;j<4;j++)K[dofs[i]][dofs[j]]+=k*ke[i][j];
+    const mass=mat.rho*sec.A*L; totalMass+=mass;
+    if(ui.selfWeight.checked){
+      F[2*m.a+1]-=mass*9.80665/2;
+      F[2*m.b+1]-=mass*9.80665/2;
+    }
+  }
+
+  const deck=deckNodes();
+  if(deck.length>=2 && loadkN>0){
+    const xmin=deck[0].x,xmax=deck[deck.length-1].x,span=xmax-xmin;
+    const center=xmin+(+ui.truckPos.value/100)*span;
+    const sp=Math.max(0,+ui.axleSpacing.value||0);
+    addPointLoad(F,center-sp/2,loadkN*1000*0.45);
+    addPointLoad(F,center+sp/2,loadkN*1000*0.55);
+  }
+
+  const fixed=new Set();
+  nodes.forEach((n,i)=>{
+    if(n.support==='pin'){fixed.add(2*i);fixed.add(2*i+1);}
+    if(n.support==='roller')fixed.add(2*i+1);
+  });
+  const free=[];
+  for(let i=0;i<nd;i++)if(!fixed.has(i))free.push(i);
+  if(!free.length)return {ok:false,mechanism:true,message:'All degrees of freedom are restrained.'};
+
+  const Kff=free.map(i=>free.map(j=>K[i][j]));
+  const Ff=free.map(i=>F[i]);
+  const uf=gaussianSolve(Kff,Ff);
+  if(!uf || uf.some(v=>!Number.isFinite(v)))return {ok:false,mechanism:true,message:'Mechanism / singular stiffness matrix.'};
+
+  const u=Array(nd).fill(0);
+  free.forEach((d,i)=>u[d]=uf[i]);
+
+  let maxForce=0,maxStress=0,maxRatio=0,weak=null,maxSag=0;
+  const mr=[];
+  members.forEach((m,mi)=>{
+    if(!m.alive){mr.push({mi,alive:false,ratio:0,force:0,stress:0,mode:'failed'});return;}
+    const a=nodes[m.a],b=nodes[m.b],dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);
+    const c=dx/L,s=dy/L,mat=materials[m.material]||materials.steel,sec=sectionProps(m.D,m.t);
+    const ext=(-c*u[2*m.a]-s*u[2*m.a+1]+c*u[2*m.b]+s*u[2*m.b+1]);
+    const force=mat.E*sec.A/L*ext;
+    const stress=force/sec.A;
+    const yieldCap=mat.fy*sec.A;
+    const pcr=Math.PI*Math.PI*mat.E*sec.I/Math.pow(Math.max(1e-9,m.K*L),2);
+    const compressionCap=Math.min(yieldCap,pcr);
+    const cap=force>=0?yieldCap:compressionCap;
+    const ratio=Math.abs(force)/Math.max(1e-12,cap);
+    const mode=force>=0?'tension yield':(pcr<yieldCap?'Euler buckle':'compression yield');
+    const row={mi,alive:true,L,force,stress,cap,pcr,yieldCap,ratio,mode,A:sec.A,I:sec.I};
+    mr.push(row);
+    if(Math.abs(force)>maxForce)maxForce=Math.abs(force);
+    if(Math.abs(stress)>maxStress)maxStress=Math.abs(stress);
+    if(ratio>maxRatio){maxRatio=ratio;weak=row;}
+  });
+
+  for(const n of deck){
+    maxSag=Math.max(maxSag,-u[2*n.i+1]);
+  }
+
+  return {ok:true,mechanism:false,u,F,members:mr,maxForce,maxStress,maxRatio,weak,maxSag,totalMass,loadkN};
+}
+
+function currentAnalysis(load){
+  result=analyze(load);
+  return result;
+}
+
+function stressColor(row){
+  if(!row||!row.alive)return '#9aa3b2';
+  if(display==='tc'){
+    if(Math.abs(row.force)<1e-6)return '#7b8493';
+    return row.force>=0?'#2563eb':'#dc3c3c';
+  }
+  const r=row.ratio;
+  if(r<.5)return '#16835f';
+  if(r<.9)return '#d69218';
+  return '#c92a2a';
+}
+function lineWidth(row){
+  if(!row||!row.alive)return 4;
+  return display==='util'?Math.min(12,4+6*Math.min(1.5,row.ratio)):6;
+}
+
+function drawSupport(n,p){
+  ctx.save();ctx.strokeStyle='#4b5563';ctx.fillStyle='#eef1f5';ctx.lineWidth=2;
+  if(n.support==='pin'){
+    ctx.beginPath();ctx.moveTo(p.x,p.y+5);ctx.lineTo(p.x-12,p.y+23);ctx.lineTo(p.x+12,p.y+23);ctx.closePath();ctx.fill();ctx.stroke();
+  }else if(n.support==='roller'){
+    ctx.beginPath();ctx.moveTo(p.x,p.y+5);ctx.lineTo(p.x-12,p.y+20);ctx.lineTo(p.x+12,p.y+20);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(p.x-7,p.y+25,4,0,Math.PI*2);ctx.arc(p.x+7,p.y+25,4,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+}
+function truckGeometry(){
+  const deck=deckNodes();if(deck.length<2)return null;
+  const xmin=deck[0].x,xmax=deck[deck.length-1].x,span=xmax-xmin;
+  const x=xmin+(+ui.truckPos.value/100)*span;
+  return {x,span,xmin,xmax};
+}
+function drawTruck(){
+  const g=truckGeometry();if(!g)return;
+  const T=transform(),p={x:T.x0+g.x*T.s,y:T.y0};
+  ctx.save();
+  ctx.fillStyle='#333b4a';ctx.fillRect(p.x-26,p.y-38,52,21);
+  ctx.fillStyle='#5a6575';ctx.fillRect(p.x+2,p.y-50,20,13);
+  ctx.fillStyle='#111827';
+  ctx.beginPath();ctx.arc(p.x-16,p.y-13,7,0,Math.PI*2);ctx.arc(p.x+16,p.y-13,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#344054';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText((+ui.truckLoad.value||0)+' kN',p.x,p.y-56);
+  ctx.restore();
+}
+
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const T=transform();
+  ctx.strokeStyle='#edf0f4';ctx.lineWidth=1;
+  for(let x=50;x<canvas.width;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+  for(let y=50;y<canvas.height;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  ctx.strokeStyle='#8c96a5';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(35,T.y0);ctx.lineTo(canvas.width-35,T.y0);ctx.stroke();
+
+  const def=+ui.defScale.value||0;
+  // undeformed outline
+  ctx.save();ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(90,100,115,.28)';ctx.lineWidth=2;
+  for(const m of members){
+    if(!m.alive)continue;
+    const A=screen(nodes[m.a],0),B=screen(nodes[m.b],0);
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+  }
+  ctx.restore();
+
+  members.forEach((m,mi)=>{
+    const row=result&&result.ok?result.members[mi]:null;
+    const A=screen(nodes[m.a],result&&result.ok?def:0),B=screen(nodes[m.b],result&&result.ok?def:0);
+    ctx.strokeStyle=stressColor(row);ctx.lineWidth=lineWidth(row);ctx.lineCap='round';
+    if(!m.alive)ctx.setLineDash([8,6]);else ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+    ctx.setLineDash([]);
+    if(selected&&selected.type==='member'&&selected.i===mi){
+      ctx.strokeStyle='#111827';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+    }
+  });
+
+  nodes.forEach((n,i)=>{
+    const p=screen(n,result&&result.ok?def:0);
+    drawSupport(n,p);
+    ctx.fillStyle=n.deck?'#0f766e':'#172033';ctx.strokeStyle='#fff';ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);ctx.fill();ctx.stroke();
+    if(selected&&selected.type==='node'&&selected.i===i || memberFirst===i){
+      ctx.strokeStyle='#315fb8';ctx.lineWidth=3;ctx.beginPath();ctx.arc(p.x,p.y,14,0,Math.PI*2);ctx.stroke();
+    }
+  });
+  drawTruck();
+
+  ctx.fillStyle='#667085';ctx.font='13px system-ui';ctx.textAlign='left';
+  const msg=mode==='node'?'Click empty space to add a joint.':
+    mode==='member'?'Click two joints to add/remove a member.':
+    'Select a member to inspect it, or drag a node to alter the geometry.';
+  ctx.fillText(msg,18,canvas.height-18);
+
+  updateUI();
+}
+
+function nodeHit(px,py){
+  let best=null,bestd=15*15;
+  nodes.forEach((n,i)=>{
+    const p=screen(n,result&&result.ok?(+ui.defScale.value||0):0),d=(p.x-px)**2+(p.y-py)**2;
+    if(d<bestd){best=i;bestd=d;}
+  });
+  return best;
+}
+function pointSegDist(px,py,x1,y1,x2,y2){
+  const vx=x2-x1,vy=y2-y1,wx=px-x1,wy=py-y1;
+  const c1=vx*wx+vy*wy,c2=vx*vx+vy*vy;
+  let t=c2?Math.max(0,Math.min(1,c1/c2)):0;
+  const dx=px-(x1+t*vx),dy=py-(y1+t*vy);
+  return Math.hypot(dx,dy);
+}
+function memberHit(px,py){
+  let best=null,bestd=10;
+  members.forEach((m,i)=>{
+    const A=screen(nodes[m.a],result&&result.ok?(+ui.defScale.value||0):0),B=screen(nodes[m.b],result&&result.ok?(+ui.defScale.value||0):0);
+    const d=pointSegDist(px,py,A.x,A.y,B.x,B.y);
+    if(d<bestd){best=i;bestd=d;}
+  });
+  return best;
+}
+
+function updateSelectedInfo(){
+  if(!selected){ui.selectedInfo.textContent='Click a member or node.';return;}
+  if(selected.type==='node'){
+    const n=nodes[selected.i];
+    ui.selectedInfo.innerHTML=`<b>Node ${selected.i+1}</b><br>x=${n.x.toFixed(2)} m, y=${n.y.toFixed(2)} m<br>Support: ${n.support||'none'}<br>Deck load node: ${n.deck?'yes':'no'}`;
+  }else{
+    const m=members[selected.i],row=result&&result.ok?result.members[selected.i]:null;
+    const mat=materials[m.material]||materials.steel;
+    let s=`<b>Member M${selected.i+1}</b><br>${mat.name}, OD ${m.D} mm, wall ${m.t} mm<br>${m.alive?'Active':'FAILED'}`;
+    if(row&&row.alive){
+      const sf=row.ratio>0?1/row.ratio:Infinity;
+      s+=`<br>Length ${row.L.toFixed(2)} m<br>Force ${(row.force/1000).toFixed(2)} kN (${row.force>=0?'tension':'compression'})`;
+      s+=`</br>Stress ${(row.stress/1e6).toFixed(2)} MPa<br>Governing failure: ${row.mode}<br>Use ${(100*row.ratio).toFixed(1)}%`;
+      s+=`<br>Safety factor ${Number.isFinite(sf)?sf.toFixed(2):'∞'}`;
+    }
+    ui.selectedInfo.innerHTML=s;
+  }
+}
+function updateMemberTable(){
+  ui.memberTable.innerHTML='';
+  if(!result||!result.ok)return;
+  const rows=result.members.filter(r=>r.alive).sort((a,b)=>b.ratio-a.ratio).slice(0,12);
+  for(const r of rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>M${r.mi+1}</td><td>${(r.force/1000).toFixed(1)}</td><td>${(r.stress/1e6).toFixed(1)}</td><td>${(100*r.ratio).toFixed(0)}%</td><td>${r.mode}</td>`;
+    tr.addEventListener('click',()=>{selected={type:'member',i:r.mi};render();});
+    ui.memberTable.appendChild(tr);
+  }
+}
+function updateUI(){
+  const failCount=members.filter(m=>!m.alive).length;
+  ui.failedRead.textContent=failCount;
+  const load=running?testLoad:(+ui.truckLoad.value||0);
+  ui.loadRead.textContent=load.toFixed(0)+' kN';
+  if(!result){
+    ui.statusBig.textContent='Ready';ui.statusText.textContent='Run the analysis.';
+    ui.forceRead.textContent=ui.weakRead.textContent=ui.sagRead.textContent=ui.massRead.textContent=ui.stressRead.textContent=ui.sfRead.textContent='–';
+  }else if(!result.ok){
+    ui.statusBig.textContent='MECHANISM / COLLAPSE';
+    ui.statusText.textContent=result.message;
+    ui.forceRead.textContent=ui.weakRead.textContent=ui.sagRead.textContent=ui.stressRead.textContent=ui.sfRead.textContent='–';
+    ui.massRead.textContent=bridgeMass().toFixed(0)+' kg';
+  }else{
+    const ratio=result.maxRatio;
+    ui.statusBig.textContent=ratio>=1?'OVER CAPACITY':ratio>=.8?'Near capacity':'Stable';
+    ui.statusText.textContent=ratio>=1?'At least one member exceeds its calculated capacity.':ratio>=.8?'One or more members are close to failure.':'All active members are below their calculated capacity.';
+    ui.forceRead.textContent=(result.maxForce/1000).toFixed(1)+' kN';
+    ui.weakRead.textContent=result.weak?'M'+(result.weak.mi+1)+' · '+result.weak.mode:'–';
+    ui.sagRead.textContent=(1000*result.maxSag).toFixed(2)+' mm';
+    ui.massRead.textContent=result.totalMass.toFixed(0)+' kg';
+    ui.stressRead.textContent=(result.maxStress/1e6).toFixed(1)+' MPa';
+    ui.sfRead.textContent=ratio>0?(1/ratio).toFixed(2):'∞';
+  }
+  const nodeSel=selected&&selected.type==='node';
+  document.getElementById('pinBtn').disabled=!nodeSel;
+  document.getElementById('rollerBtn').disabled=!nodeSel;
+  document.getElementById('freeBtn').disabled=!nodeSel;
+  document.getElementById('deckBtn').disabled=!nodeSel;
+  document.getElementById('deleteBtn').disabled=!selected;
+  updateSelectedInfo();updateMemberTable();drawChart();
+}
+function bridgeMass(){
+  let m=0;
+  members.forEach(x=>{
+    if(!x.alive)return;
+    const a=nodes[x.a],b=nodes[x.b],L=Math.hypot(b.x-a.x,b.y-a.y),mat=materials[x.material]||materials.steel,sec=sectionProps(x.D,x.t);
+    m+=mat.rho*sec.A*L;
+  });
+  return m;
+}
+
+function analyzeAndRender(loadOverride=null){
+  const load=loadOverride==null?(+ui.truckLoad.value||0):loadOverride;
+  result=currentAnalysis(load);
+  render();
+}
+function runAnalysis(){
+  stopTest();testLoad=+ui.truckLoad.value||0;testHistory=[];
+  analyzeAndRender(testLoad);
+  if(result.ok)log(`Analysis: ${testLoad.toFixed(0)} kN, weakest ${result.weak?'M'+(result.weak.mi+1):'–'}, max use ${(100*result.maxRatio).toFixed(1)}%.`);
+  else log('Analysis failed: '+result.message);
+}
+
+function drawChart(){
+  cctx.clearRect(0,0,chart.width,chart.height);
+  cctx.fillStyle='#fff';cctx.fillRect(0,0,chart.width,chart.height);
+  const pad={l:58,r:18,t:15,b:36};
+  cctx.strokeStyle='#c9cfda';cctx.lineWidth=1;
+  cctx.beginPath();cctx.moveTo(pad.l,pad.t);cctx.lineTo(pad.l,chart.height-pad.b);cctx.lineTo(chart.width-pad.r,chart.height-pad.b);cctx.stroke();
+  cctx.fillStyle='#667085';cctx.font='12px system-ui';
+  cctx.fillText('Load (kN)',8,18);cctx.fillText('Max sag (mm)',chart.width-96,chart.height-10);
+  if(testHistory.length<2)return;
+  const maxL=Math.max(...testHistory.map(p=>p.load),1),maxD=Math.max(...testHistory.map(p=>p.sag*1000),.001);
+  const X=d=>pad.l+d/maxL*(chart.width-pad.l-pad.r);
+  const Y=d=>chart.height-pad.b-d/maxD*(chart.height-pad.t-pad.b);
+  cctx.strokeStyle='#315fb8';cctx.lineWidth=2;cctx.beginPath();
+  testHistory.forEach((p,i)=>{const x=X(p.load),y=Y(p.sag*1000);if(i)cctx.lineTo(x,y);else cctx.moveTo(x,y);});cctx.stroke();
+  cctx.fillStyle='#667085';cctx.fillText(maxL.toFixed(0),chart.width-pad.r-28,chart.height-16);
+  cctx.fillText(maxD.toFixed(1),10,pad.t+5);
+  for(const p of testHistory.filter(p=>p.failure)){
+    const x=X(p.load),y=Y(p.sag*1000);cctx.fillStyle='#c92a2a';cctx.beginPath();cctx.arc(x,y,5,0,Math.PI*2);cctx.fill();
+  }
+}
+
+function resetTest(){
+  stopTest();
+  members.forEach(m=>{m.alive=true;m.failedAt=null;});
+  testHistory=[];testLoad=+ui.truckLoad.value||100;result=null;
+  clearLog('Test reset. All members restored.');
+  analyzeAndRender();
+}
+function restoreMembers(){
+  members.forEach(m=>{m.alive=true;m.failedAt=null;});
+  result=null;testHistory=[];clearLog('All members restored.');analyzeAndRender();
+}
+function stopTest(){
+  running=false;
+  if(timer){clearTimeout(timer);timer=null;}
+  document.getElementById('failBtn').disabled=false;
+  document.getElementById('stopBtn').disabled=true;
+}
+function failOverloadedAtCurrentLoad(){
+  let cascade=0;
+  while(true){
+    result=currentAnalysis(testLoad);
+    if(!result.ok)return {collapsed:true,cascade};
+    const candidates=result.members.filter(r=>r.alive&&r.ratio>=1).sort((a,b)=>b.ratio-a.ratio);
+    if(!candidates.length)return {collapsed:false,cascade};
+    const r=candidates[0],m=members[r.mi];
+    m.alive=false;m.failedAt=testLoad;cascade++;
+    testHistory.push({load:testLoad,sag:result.maxSag,failure:true});
+    log(`FAIL M${r.mi+1} at ${testLoad.toFixed(1)} kN — ${r.mode}; force ${(r.force/1000).toFixed(1)} kN, use ${(r.ratio*100).toFixed(0)}%.`);
+    if(cascade>members.length)return {collapsed:true,cascade};
+  }
+}
+function failureStep(){
+  if(!running)return;
+  const speed=Math.max(1,+ui.speed.value||1);
+  const inc=Math.max(1,Math.min(25,2.5*speed));
+  testLoad+=inc;
+  ui.truckLoad.value=testLoad.toFixed(0);
+  result=currentAnalysis(testLoad);
+
+  if(!result.ok){
+    testHistory.push({load:testLoad,sag:0,failure:true});
+    log(`COLLAPSE at about ${testLoad.toFixed(1)} kN — structure became a mechanism.`);
+    render();stopTest();return;
+  }
+
+  testHistory.push({load:testLoad,sag:result.maxSag,failure:false});
+  if(result.maxRatio>=1){
+    const f=failOverloadedAtCurrentLoad();
+    result=currentAnalysis(testLoad);
+    if(f.collapsed || !result.ok){
+      log(`COLLAPSE at about ${testLoad.toFixed(1)} kN after ${f.cascade} member failure(s) in the final cascade.`);
+      render();stopTest();return;
+    }
+  }
+  render();
+  if(testLoad>=10000){
+    log('Stopped at 10,000 kN test ceiling.');stopTest();return;
+  }
+  timer=setTimeout(failureStep,80);
+}
+function startFailureTest(){
+  if(running)return;
+  members.forEach(m=>{m.alive=true;m.failedAt=null;});
+  testHistory=[];testLoad=0;ui.truckLoad.value='0';
+  clearLog('Test to failure started. Load will increase until members fail and the structure collapses.');
+  running=true;
+  document.getElementById('failBtn').disabled=true;
+  document.getElementById('stopBtn').disabled=false;
+  failureStep();
+}
+
+function setMode(m){
+  if(running)return;
+  mode=m;memberFirst=null;
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  canvas.style.cursor=m==='node'?'crosshair':'default';
+  render();
+}
+function toggleMember(a,b){
+  if(a===b)return;
+  const hit=members.findIndex(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
+  if(hit>=0)members.splice(hit,1);else members.push(newMember(a,b));
+  result=null;
+}
+function deleteSelected(){
+  if(!selected)return;
+  if(selected.type==='member')members.splice(selected.i,1);
+  else{
+    const i=selected.i;
+    members=members.filter(m=>m.a!==i&&m.b!==i).map(m=>({...m,a:m.a>i?m.a-1:m.a,b:m.b>i?m.b-1:m.b}));
+    nodes.splice(i,1);
+  }
+  selected=null;result=null;render();
+}
+
+canvas.addEventListener('pointerdown',e=>{
+  if(running)return;
+  const p=pointer(e),nh=nodeHit(p.x,p.y);
+  if(mode==='node'){
+    if(nh!==null)return;
+    const q=modelFromScreen(p.x,p.y);
+    nodes.push({x:q.x,y:Math.max(0,q.y),support:null,deck:false});
+    selected={type:'node',i:nodes.length-1};result=null;render();return;
+  }
+  if(mode==='member'){
+    if(nh===null)return;
+    selected={type:'node',i:nh};
+    if(memberFirst===null)memberFirst=nh;
+    else if(memberFirst===nh)memberFirst=null;
+    else{toggleMember(memberFirst,nh);memberFirst=null;}
+    render();return;
+  }
+  if(nh!==null){
+    selected={type:'node',i:nh};draggingNode=nh;lastPointer=p;canvas.setPointerCapture(e.pointerId);render();return;
+  }
+  const mh=memberHit(p.x,p.y);
+  if(mh!==null){selected={type:'member',i:mh};render();return;}
+  selected=null;render();
+});
+canvas.addEventListener('pointermove',e=>{
+  if(running||draggingNode===null)return;
+  const p=pointer(e),q=modelFromScreen(p.x,p.y);
+  nodes[draggingNode].x=q.x;nodes[draggingNode].y=Math.max(0,q.y);
+  lastPointer=p;result=null;render();
+});
+function endDrag(){draggingNode=null;lastPointer=null;}
+canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+
+document.querySelectorAll('[data-template]').forEach(b=>b.addEventListener('click',()=>loadTemplate(b.dataset.template)));
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+document.getElementById('runBtn').addEventListener('click',runAnalysis);
+document.getElementById('failBtn').addEventListener('click',startFailureTest);
+document.getElementById('stopBtn').addEventListener('click',()=>{log('Failure test stopped by user.');stopTest();});
+document.getElementById('resetTestBtn').addEventListener('click',resetTest);
+document.getElementById('restoreBtn').addEventListener('click',restoreMembers);
+
+document.getElementById('pinBtn').addEventListener('click',()=>{if(selected?.type==='node'){nodes[selected.i].support='pin';result=null;render();}});
+document.getElementById('rollerBtn').addEventListener('click',()=>{if(selected?.type==='node'){nodes[selected.i].support='roller';result=null;render();}});
+document.getElementById('freeBtn').addEventListener('click',()=>{if(selected?.type==='node'){nodes[selected.i].support=null;result=null;render();}});
+document.getElementById('deckBtn').addEventListener('click',()=>{if(selected?.type==='node'){nodes[selected.i].deck=!nodes[selected.i].deck;result=null;render();}});
+document.getElementById('deleteBtn').addEventListener('click',deleteSelected);
+
+document.getElementById('applyAll').addEventListener('click',()=>{
+  members.forEach(m=>{m.material=ui.material.value;m.D=+ui.diameter.value||120;m.t=+ui.thickness.value||6;m.K=+ui.kfactor.value||1;});
+  result=null;log('Material and section applied to all members.');analyzeAndRender();
+});
+
+ui.truckLoad.addEventListener('change',()=>analyzeAndRender());
+ui.truckPos.addEventListener('input',()=>analyzeAndRender());
+ui.axleSpacing.addEventListener('change',()=>analyzeAndRender());
+ui.selfWeight.addEventListener('change',()=>analyzeAndRender());
+ui.defScale.addEventListener('input',()=>{ui.defScaleVal.textContent=ui.defScale.value+'×';render();});
+document.getElementById('tcBtn').addEventListener('click',()=>{display='tc';document.getElementById('tcBtn').classList.add('active');document.getElementById('utilBtn').classList.remove('active');render();});
+document.getElementById('utilBtn').addEventListener('click',()=>{display='util';document.getElementById('utilBtn').classList.add('active');document.getElementById('tcBtn').classList.remove('active');render();});
+
+loadTemplate('warren');
+})();
+</script>
+</body>
+</html>

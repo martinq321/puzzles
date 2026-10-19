@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Rigidity Lab — Bars, Joints & Degrees of Freedom</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --text:#1d2430; --muted:#667085;
+  --border:#d7dce3; --accent:#315fb8; --accent-bg:#e9effb;
+  --bar:#344054; --joint:#e7961d; --pin:#7c3aed; --select:#2563eb;
+  --x:#b54747; --y:#348352; --z:#3c6eaa;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1240px;margin:auto;padding:18px}
+h1{font-size:clamp(1.5rem,3vw,2.3rem);margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 14px}
+.toolbar,.modebar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button,select,input{font:inherit}
+button{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:10px;padding:10px 13px;min-height:44px;font-weight:650;cursor:pointer}
+button:hover{background:#f0f2f5}
+button.active{background:var(--accent-bg);border-color:var(--accent);color:#173b89}
+button:disabled{opacity:.45;cursor:not-allowed}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 305px;gap:16px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+.canvas{padding:0;overflow:hidden;position:relative}
+canvas{display:block;width:100%;height:auto;touch-action:none;background:#fff}
+.help{font-size:.92rem;color:var(--muted)}
+.small{font-size:.86rem}
+.stats{display:grid;grid-template-columns:1fr auto;gap:8px 12px}
+.stats strong{text-align:right}
+.big{font-size:1.4rem;font-weight:760;margin:2px 0 4px}
+.key{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+hr{border:0;border-top:1px solid var(--border);margin:12px 0}
+.coords{display:grid;grid-template-columns:auto 1fr;gap:7px 8px;align-items:center}
+.coords input{width:100%;min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.83rem;color:var(--muted)}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+.note{padding:10px 12px;border-radius:10px;background:#f4f6f8;color:var(--muted);font-size:.9rem}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+</style>
+<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style></head>
+<body>
+<main>
+<nav class="mw-nav" aria-label="Site navigation"><a href="../index.html">← Home</a><a href="rigidity-2d.html">2D rigidity</a><a href="rigidity-3d.html" aria-current="page">3D rigidity</a><a href="bridge-lab.html">Bridge lab</a></nav>
+  <h1>3D Rigidity Lab</h1>
+  <p class="sub">Build bar-and-joint structures in three dimensions. Bars keep the length they had when created; rotate the view to inspect the structure.</p>
+
+  <div class="toolbar" aria-label="Preset structures">
+    <button type="button" data-preset="tetra">Tetrahedron</button>
+    <button type="button" data-preset="cube">Cube</button>
+    <button type="button" data-preset="bracedcube">Braced cube</button>
+    <button type="button" data-preset="octa">Octahedron</button>
+    <button type="button" data-preset="tower">Tower</button>
+    <button type="button" id="resetBtn">Reset preset</button>
+    <button type="button" id="clearBtn">Clear all</button>
+  </div>
+
+  <div class="modebar" aria-label="Editing modes">
+    <button type="button" data-mode="drag" class="active">Move joint</button>
+    <button type="button" data-mode="orbit">Rotate view</button>
+    <button type="button" data-mode="joint">+ Add joint</button>
+    <button type="button" data-mode="bar">+ / − Bar</button>
+    <button type="button" id="pinBtn" disabled>Pin / unpin</button>
+    <button type="button" id="deleteBtn" disabled>Delete joint</button>
+  </div>
+
+  <div class="layout">
+    <section>
+      <div class="card canvas">
+        <canvas id="lab" width="900" height="620" aria-label="Interactive three-dimensional rigidity model"></canvas>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="row">
+          <strong id="selectionTitle">No joint selected</strong>
+          <span class="help">Move selected joint precisely:</span>
+        </div>
+        <div class="coords" style="margin-top:10px">
+          <label for="xCoord">x</label><input id="xCoord" type="number" step="0.1" disabled>
+          <label for="yCoord">y</label><input id="yCoord" type="number" step="0.1" disabled>
+          <label for="zCoord">z</label><input id="zCoord" type="number" step="0.1" disabled>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button type="button" id="applyCoords" disabled>Apply coordinates</button>
+          <button type="button" id="zMinus" disabled>Move −z</button>
+          <button type="button" id="zPlus" disabled>Move +z</button>
+        </div>
+        <p class="help small">Dragging a joint moves it in the current screen plane. Use ±z or the coordinate boxes for depth. After every move, the constraint solver restores the original bar lengths.</p>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div class="small"><strong>Framework</strong></div>
+        <div id="statusBig" class="big"></div>
+        <div id="statusText" class="help"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="stats">
+          <span>Joints <span class="key">V</span></span><strong id="vCount">0</strong>
+          <span>Bars <span class="key">E</span></span><strong id="eCount">0</strong>
+          <span>Rigidity rank</span><strong id="rankCount">0</strong>
+          <span>Internal DOF</span><strong id="dofCount">0</strong>
+          <span>Max bar error</span><strong id="errorCount">0</strong>
+        </div>
+        <hr>
+        <strong>Maxwell count in 3D</strong>
+        <div class="key" style="margin-top:4px">E ≥ 3V − 6</div>
+        <div id="maxwellText" class="help" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Controls</strong>
+        <p class="help"><b>Move joint:</b> drag a free joint in the screen plane.</p>
+        <p class="help"><b>Rotate view:</b> drag anywhere to orbit; mouse wheel zooms.</p>
+        <p class="help"><b>Add joint:</b> click empty space. It is placed in the plane through the origin facing the camera.</p>
+        <p class="help"><b>+ / − Bar:</b> click two joints. If already connected, the bar is removed.</p>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Try this challenge</strong>
+        <p class="help">Compare the cube with the tetrahedron. Which can change shape while every bar stays the same length?</p>
+        <p class="help">How few extra bars can you add to make the cube rigid?</p>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--joint)"></i>free joint</span>
+          <span><i class="swatch" style="background:var(--pin)"></i>pinned joint</span>
+        </div>
+        <div class="note" style="margin-top:10px">The Maxwell count is necessary for generic 3D rigidity, but unlike the 2D Laman theorem it is not sufficient by itself.</div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+(() => {
+  const canvas = document.getElementById('lab');
+  const ctx = canvas.getContext('2d');
+  const vEl = document.getElementById('vCount');
+  const eEl = document.getElementById('eCount');
+  const rankEl = document.getElementById('rankCount');
+  const dofEl = document.getElementById('dofCount');
+  const errEl = document.getElementById('errorCount');
+  const statusBig = document.getElementById('statusBig');
+  const statusText = document.getElementById('statusText');
+  const maxwellText = document.getElementById('maxwellText');
+  const pinBtn = document.getElementById('pinBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const selectionTitle = document.getElementById('selectionTitle');
+  const xInput = document.getElementById('xCoord');
+  const yInput = document.getElementById('yCoord');
+  const zInput = document.getElementById('zCoord');
+  const applyCoords = document.getElementById('applyCoords');
+  const zMinus = document.getElementById('zMinus');
+  const zPlus = document.getElementById('zPlus');
+
+  let nodes = [], bars = [];
+  let mode = 'drag';
+  let selected = null, barFirst = null, dragging = null;
+  let lastPointer = null, orbiting = false;
+  let initial = null;
+  let yaw = -0.65, pitch = 0.42, zoom = 130;
+  let renderNodes = [];
+
+  const presets = {
+    tetra: {
+      n:[[-1,-.8,-.7],[1,-.8,-.7],[0,-.8,1],[0,1,0]],
+      b:[[0,1],[1,2],[2,0],[0,3],[1,3],[2,3]], p:[0,1,2]
+    },
+    cube: {
+      n:[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
+      b:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]], p:[0,1,3]
+    },
+    bracedcube: {
+      n:[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
+      b:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7],
+         [0,2],[4,6],[0,5],[1,6],[2,7],[3,4]], p:[0,1,3]
+    },
+    octa: {
+      n:[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
+      b:[[0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],[2,4],[4,3],[3,5],[5,2]], p:[1,3,5]
+    },
+    tower: {
+      n:[[-1.4,-1.6,-1], [1.4,-1.6,-1], [1.4,-1.6,1], [-1.4,-1.6,1],
+         [-.9,-.2,-.7], [.9,-.2,-.7], [.9,-.2,.7], [-.9,-.2,.7],
+         [-.45,1.1,-.35],[.45,1.1,-.35],[.45,1.1,.35],[-.45,1.1,.35],
+         [0,2.0,0]],
+      b:[[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6],[3,7],
+         [4,5],[5,6],[6,7],[7,4],[0,5],[1,6],[2,7],[3,4],
+         [4,8],[5,9],[6,10],[7,11],[8,9],[9,10],[10,11],[11,8],
+         [4,9],[5,10],[6,11],[7,8],[8,12],[9,12],[10,12],[11,12]], p:[0,1,2,3]
+    }
+  };
+
+  const dist3=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);
+  function makeBar(a,b){ return {a,b,len:dist3(nodes[a],nodes[b])}; }
+
+  function snapshot(){
+    return {nodes:nodes.map(n=>({...n})),bars:bars.map(b=>({...b})),yaw,pitch,zoom};
+  }
+
+  function restore(s){
+    nodes=s.nodes.map(n=>({...n}));
+    bars=s.bars.map(b=>({...b}));
+    yaw=s.yaw; pitch=s.pitch; zoom=s.zoom;
+    selected=null; barFirst=null; dragging=null; orbiting=false;
+    render();
+  }
+
+  function loadPreset(name){
+    const p=presets[name];
+    nodes=p.n.map((q,i)=>({x:q[0],y:q[1],z:q[2],pinned:p.p.includes(i)}));
+    bars=p.b.map(([a,b])=>makeBar(a,b));
+    yaw=-0.65; pitch=0.42; zoom=130;
+    selected=null; barFirst=null; dragging=null;
+    initial=snapshot();
+    setMode('drag');
+    render();
+  }
+
+  function setMode(m){
+    mode=m; barFirst=null; dragging=null; orbiting=false;
+    document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+    canvas.style.cursor = m==='orbit'?'grab':m==='joint'?'crosshair':'default';
+    render();
+  }
+
+  function rotatePoint(p){
+    const cy=Math.cos(yaw), sy=Math.sin(yaw);
+    const cp=Math.cos(pitch), sp=Math.sin(pitch);
+    const x1=cy*p.x + sy*p.z;
+    const z1=-sy*p.x + cy*p.z;
+    const y1=p.y;
+    const y2=cp*y1 - sp*z1;
+    const z2=sp*y1 + cp*z1;
+    return {x:x1,y:y2,z:z2};
+  }
+
+  function invRotateVector(v){
+    const cp=Math.cos(pitch), sp=Math.sin(pitch);
+    const cy=Math.cos(yaw), sy=Math.sin(yaw);
+    const x1=v.x;
+    const y1=cp*v.y + sp*v.z;
+    const z1=-sp*v.y + cp*v.z;
+    return {
+      x:cy*x1 - sy*z1,
+      y:y1,
+      z:sy*x1 + cy*z1
+    };
+  }
+
+  function project(p){
+    const r=rotatePoint(p);
+    const cx=canvas.width/2, cy=canvas.height/2;
+    return {sx:cx+r.x*zoom, sy:cy-r.y*zoom, depth:r.z, r};
+  }
+
+  function screenToWorldPlane(sx,sy,depth=0){
+    const rx=(sx-canvas.width/2)/zoom;
+    const ry=-(sy-canvas.height/2)/zoom;
+    return invRotateVector({x:rx,y:ry,z:depth});
+  }
+
+  function pointerPos(e){
+    const rect=canvas.getBoundingClientRect();
+    return {
+      x:(e.clientX-rect.left)*canvas.width/rect.width,
+      y:(e.clientY-rect.top)*canvas.height/rect.height
+    };
+  }
+
+  function hitNode(x,y){
+    let best=null, bestD=18*18;
+    for(const q of renderNodes){
+      const d=(q.sx-x)**2+(q.sy-y)**2;
+      if(d<bestD){best=q.i;bestD=d;}
+    }
+    return best;
+  }
+
+  function solve(iter=320){
+    for(let it=0;it<iter;it++){
+      let worst=0;
+      for(const b of bars){
+        const A=nodes[b.a], B=nodes[b.b];
+        const dx=B.x-A.x, dy=B.y-A.y, dz=B.z-A.z;
+        const d=Math.hypot(dx,dy,dz);
+        if(d<1e-12) continue;
+        const diff=d-b.len;
+        worst=Math.max(worst,Math.abs(diff));
+        const ux=dx/d, uy=dy/d, uz=dz/d;
+        if(A.pinned&&B.pinned) continue;
+        if(A.pinned){
+          B.x-=ux*diff; B.y-=uy*diff; B.z-=uz*diff;
+        }else if(B.pinned){
+          A.x+=ux*diff; A.y+=uy*diff; A.z+=uz*diff;
+        }else{
+          A.x+=ux*diff*.5; A.y+=uy*diff*.5; A.z+=uz*diff*.5;
+          B.x-=ux*diff*.5; B.y-=uy*diff*.5; B.z-=uz*diff*.5;
+        }
+      }
+      if(worst<1e-9) break;
+    }
+  }
+
+  function maxError(){
+    let m=0;
+    for(const b of bars) m=Math.max(m,Math.abs(dist3(nodes[b.a],nodes[b.b])-b.len));
+    return m;
+  }
+
+  function rigidityRank(){
+    const V=nodes.length,E=bars.length;
+    if(!V||!E) return 0;
+    const A=Array.from({length:E},()=>Array(3*V).fill(0));
+    bars.forEach((b,r)=>{
+      const p=nodes[b.a],q=nodes[b.b];
+      const dx=p.x-q.x,dy=p.y-q.y,dz=p.z-q.z;
+      A[r][3*b.a]=dx; A[r][3*b.a+1]=dy; A[r][3*b.a+2]=dz;
+      A[r][3*b.b]=-dx; A[r][3*b.b+1]=-dy; A[r][3*b.b+2]=-dz;
+    });
+    let rank=0,col=0;
+    const eps=1e-9;
+    while(rank<E && col<3*V){
+      let piv=rank;
+      for(let r=rank+1;r<E;r++) if(Math.abs(A[r][col])>Math.abs(A[piv][col])) piv=r;
+      if(Math.abs(A[piv][col])<eps){col++;continue;}
+      [A[rank],A[piv]]=[A[piv],A[rank]];
+      const pv=A[rank][col];
+      for(let c=col;c<3*V;c++) A[rank][c]/=pv;
+      for(let r=0;r<E;r++){
+        if(r===rank) continue;
+        const f=A[r][col];
+        if(Math.abs(f)>eps) for(let c=col;c<3*V;c++) A[r][c]-=f*A[rank][c];
+      }
+      rank++;col++;
+    }
+    return rank;
+  }
+
+  function componentSizes(){
+    const adj=Array.from({length:nodes.length},()=>[]);
+    bars.forEach(b=>{adj[b.a].push(b.b);adj[b.b].push(b.a);});
+    const seen=Array(nodes.length).fill(false), sizes=[];
+    for(let i=0;i<nodes.length;i++){
+      if(seen[i]) continue;
+      let n=0,stack=[i]; seen[i]=true;
+      while(stack.length){
+        const u=stack.pop();n++;
+        for(const v of adj[u]) if(!seen[v]){seen[v]=true;stack.push(v);}
+      }
+      sizes.push(n);
+    }
+    return sizes;
+  }
+
+  function trivialDOFForSize(n){
+    if(n<=0) return 0;
+    if(n===1) return 3;
+    if(n===2) return 5;
+    return 6;
+  }
+
+  function internalDOF(rank){
+    const trivial=componentSizes().reduce((s,n)=>s+trivialDOFForSize(n),0);
+    return Math.max(0,3*nodes.length-rank-trivial);
+  }
+
+  function updateStats(){
+    const V=nodes.length,E=bars.length,r=rigidityRank(),d=internalDOF(r),err=maxError();
+    vEl.textContent=V;eEl.textContent=E;rankEl.textContent=r;dofEl.textContent=d;
+    errEl.textContent=err<1e-8?'< 0.00000001':err.toExponential(2);
+
+    if(V===0){
+      statusBig.textContent='Empty board';
+      statusText.textContent='Add joints and connect them with bars.';
+    }else if(d===0){
+      statusBig.textContent='No internal flex detected';
+      statusText.textContent='The rigidity matrix detects no generic infinitesimal internal motion in the connected pieces.';
+    }else{
+      statusBig.textContent=d===1?'1 internal degree of freedom':d+' internal degrees of freedom';
+      statusText.textContent='The framework still has a mechanism: it can deform while preserving all bar lengths.';
+    }
+
+    const cs=componentSizes();
+    if(cs.length>1){
+      maxwellText.textContent='There are '+cs.length+' disconnected components. The usual 3V−6 count refers to one connected generic framework.';
+    }else if(V>=3){
+      const m=3*V-6;
+      if(E<m) maxwellText.textContent=`At least ${m} independent bars are necessary generically; this has ${E}.`;
+      else if(E===m) maxwellText.textContent=`This has the Maxwell minimum ${m} bars. In 3D that count alone does not guarantee rigidity.`;
+      else maxwellText.textContent=`This has ${E-m} bar(s) beyond the Maxwell minimum ${m}.`;
+    }else{
+      maxwellText.textContent='For a 3D framework with at least three generic joints, the Maxwell count is E ≥ 3V − 6.';
+    }
+
+    const ok=selected!==null && nodes[selected];
+    pinBtn.disabled=!ok; deleteBtn.disabled=!ok;
+    applyCoords.disabled=!ok; xInput.disabled=!ok;yInput.disabled=!ok;zInput.disabled=!ok;
+    zMinus.disabled=!ok||nodes[selected].pinned; zPlus.disabled=!ok||nodes[selected].pinned;
+    if(ok){
+      selectionTitle.textContent='Joint '+String.fromCharCode(65+(selected%26))+(nodes[selected].pinned?' (pinned)':'');
+      xInput.value=nodes[selected].x.toFixed(3);
+      yInput.value=nodes[selected].y.toFixed(3);
+      zInput.value=nodes[selected].z.toFixed(3);
+    }else{
+      selectionTitle.textContent='No joint selected';
+      xInput.value='';yInput.value='';zInput.value='';
+    }
+  }
+
+  function drawAxes(){
+    const origin=project({x:0,y:0,z:0});
+    const axes=[
+      [{x:1.2,y:0,z:0},getComputedStyle(document.documentElement).getPropertyValue('--x').trim(),'x'],
+      [{x:0,y:1.2,z:0},getComputedStyle(document.documentElement).getPropertyValue('--y').trim(),'y'],
+      [{x:0,y:0,z:1.2},getComputedStyle(document.documentElement).getPropertyValue('--z').trim(),'z']
+    ];
+    ctx.lineWidth=2;
+    ctx.font='15px system-ui';
+    for(const [p,color,label] of axes){
+      const q=project(p);
+      ctx.strokeStyle=color;ctx.fillStyle=color;
+      ctx.beginPath();ctx.moveTo(origin.sx,origin.sy);ctx.lineTo(q.sx,q.sy);ctx.stroke();
+      ctx.fillText(label,q.sx+5,q.sy-5);
+    }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.strokeStyle='rgba(102,112,133,.12)';ctx.lineWidth=1;
+    for(let x=0;x<canvas.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+    for(let y=0;y<canvas.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+
+    drawAxes();
+
+    renderNodes=nodes.map((n,i)=>({...project(n),i})).sort((a,b)=>a.depth-b.depth);
+
+    const barDraw=bars.map((b,idx)=>{
+      const A=project(nodes[b.a]),B=project(nodes[b.b]);
+      return {b,idx,A,B,depth:(A.depth+B.depth)/2};
+    }).sort((a,b)=>a.depth-b.depth);
+
+    ctx.lineCap='round';
+    for(const x of barDraw){
+      ctx.strokeStyle='#344054';ctx.lineWidth=7;
+      ctx.beginPath();ctx.moveTo(x.A.sx,x.A.sy);ctx.lineTo(x.B.sx,x.B.sy);ctx.stroke();
+    }
+
+    for(const q of renderNodes){
+      const n=nodes[q.i];
+      if(selected===q.i||barFirst===q.i){
+        ctx.strokeStyle='#2563eb';ctx.lineWidth=4;
+        ctx.beginPath();ctx.arc(q.sx,q.sy,19,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.fillStyle=n.pinned?'#7c3aed':'#e7961d';
+      ctx.strokeStyle='#fff';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(q.sx,q.sy,13,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(String.fromCharCode(65+(q.i%26)),q.sx,q.sy+1);
+    }
+
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillStyle='#667085';ctx.font='14px system-ui';
+    const msg=mode==='orbit'?'Drag to rotate the view; wheel to zoom.':
+      mode==='joint'?'Click empty space to add a joint in the current view plane.':
+      mode==='bar'?'Click two joints to add or remove a bar.':
+      'Drag a free joint. All bars are restored to their original lengths.';
+    ctx.fillText(msg,18,canvas.height-18);
+    updateStats();
+  }
+
+  function toggleBar(a,b){
+    if(a===b) return;
+    const hit=bars.findIndex(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+    if(hit>=0) bars.splice(hit,1); else bars.push(makeBar(a,b));
+  }
+
+  function deleteJoint(i){
+    bars=bars.filter(b=>b.a!==i&&b.b!==i).map(b=>({...b,a:b.a>i?b.a-1:b.a,b:b.b>i?b.b-1:b.b}));
+    nodes.splice(i,1);selected=null;barFirst=null;
+  }
+
+  function moveSelectedScreen(dx,dy){
+    if(selected===null||!nodes[selected]||nodes[selected].pinned) return;
+    const v=invRotateVector({x:dx/zoom,y:-dy/zoom,z:0});
+    nodes[selected].x+=v.x;nodes[selected].y+=v.y;nodes[selected].z+=v.z;
+    solve();render();
+  }
+
+  canvas.addEventListener('pointerdown',e=>{
+    const p=pointerPos(e),i=hitNode(p.x,p.y);
+
+    if(mode==='orbit'){
+      orbiting=true;lastPointer=p;canvas.setPointerCapture(e.pointerId);e.preventDefault();return;
+    }
+    if(mode==='joint'){
+      if(i!==null) return;
+      const w=screenToWorldPlane(p.x,p.y,0);
+      nodes.push({x:w.x,y:w.y,z:w.z,pinned:false});
+      selected=nodes.length-1;render();return;
+    }
+    if(mode==='bar'){
+      if(i===null) return;
+      selected=i;
+      if(barFirst===null) barFirst=i;
+      else if(barFirst===i) barFirst=null;
+      else{toggleBar(barFirst,i);barFirst=null;}
+      render();return;
+    }
+    if(i!==null){
+      selected=i;
+      if(!nodes[i].pinned){
+        dragging=i;lastPointer=p;canvas.setPointerCapture(e.pointerId);e.preventDefault();
+      }
+      render();
+    }else{
+      selected=null;render();
+    }
+  });
+
+  canvas.addEventListener('pointermove',e=>{
+    const p=pointerPos(e);
+    if(orbiting&&lastPointer){
+      yaw+=(p.x-lastPointer.x)*0.008;
+      pitch+=(p.y-lastPointer.y)*0.008;
+      pitch=Math.max(-1.45,Math.min(1.45,pitch));
+      lastPointer=p;render();return;
+    }
+    if(dragging!==null&&lastPointer){
+      const dx=p.x-lastPointer.x,dy=p.y-lastPointer.y;lastPointer=p;
+      moveSelectedScreen(dx,dy);
+    }
+  });
+
+  function endPointer(){
+    if(dragging!==null) solve(600);
+    dragging=null;orbiting=false;lastPointer=null;render();
+  }
+  canvas.addEventListener('pointerup',endPointer);
+  canvas.addEventListener('pointercancel',endPointer);
+
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    zoom*=Math.exp(-e.deltaY*0.001);
+    zoom=Math.max(45,Math.min(280,zoom));
+    render();
+  },{passive:false});
+
+  document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>loadPreset(b.dataset.preset)));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+  document.getElementById('resetBtn').addEventListener('click',()=>{if(initial)restore(initial);});
+  document.getElementById('clearBtn').addEventListener('click',()=>{
+    nodes=[];bars=[];selected=null;barFirst=null;initial=snapshot();render();
+  });
+
+  pinBtn.addEventListener('click',()=>{
+    if(selected===null)return;
+    nodes[selected].pinned=!nodes[selected].pinned;solve();render();
+  });
+  deleteBtn.addEventListener('click',()=>{
+    if(selected===null)return;
+    deleteJoint(selected);render();
+  });
+
+  applyCoords.addEventListener('click',()=>{
+    if(selected===null||nodes[selected].pinned)return;
+    const x=Number(xInput.value),y=Number(yInput.value),z=Number(zInput.value);
+    if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
+    nodes[selected].x=x;nodes[selected].y=y;nodes[selected].z=z;solve(700);render();
+  });
+  zMinus.addEventListener('click',()=>{
+    if(selected===null||nodes[selected].pinned)return;
+    nodes[selected].z-=0.12;solve();render();
+  });
+  zPlus.addEventListener('click',()=>{
+    if(selected===null||nodes[selected].pinned)return;
+    nodes[selected].z+=0.12;solve();render();
+  });
+
+  canvas.tabIndex=0;
+  canvas.addEventListener('keydown',e=>{
+    if(selected===null||!nodes[selected]||nodes[selected].pinned)return;
+    if(e.key==='ArrowLeft'){moveSelectedScreen(-8,0);e.preventDefault();}
+    if(e.key==='ArrowRight'){moveSelectedScreen(8,0);e.preventDefault();}
+    if(e.key==='ArrowUp'){moveSelectedScreen(0,-8);e.preventDefault();}
+    if(e.key==='ArrowDown'){moveSelectedScreen(0,8);e.preventDefault();}
+  });
+
+  loadPreset('tetra');
+})();
+</script>
+</body>
+</html>
