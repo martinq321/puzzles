@@ -1,0 +1,16 @@
+'use strict';
+const Core={
+ shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a},
+ feedback(guess,secret){let a=Array(guess.length).fill(0),pool={};for(let i=0;i<guess.length;i++)if(guess[i]===secret[i])a[i]=2;else pool[secret[i]]=(pool[secret[i]]||0)+1;for(let i=0;i<guess.length;i++)if(!a[i]&&pool[guess[i]]){a[i]=1;pool[guess[i]]--}return a},
+ divisors(a,n){return a.filter(x=>x!==n&&n%x===0)},
+ remove(a,i){if(i<=0||i>=a.length-1)return a.slice();return [...a.slice(0,i-1),a[i-1]+a[i],a[i+1]+a[i],...a.slice(i+2)]},
+ bestRemoval(a,memo=new Map()){if(a.length===2)return {value:a[0]+a[1],index:-1};const key=a.join(',');if(memo.has(key))return memo.get(key);let best={value:-1,index:1};for(let i=1;i<a.length-1;i++){const v=this.bestRemoval(this.remove(a,i),memo).value;if(v>best.value)best={value:v,index:i}}memo.set(key,best);return best},
+ winningMultiplier(p,t,memo=new Map()){if(memo.has(p))return memo.get(p);for(let m=2;m<=9;m++)if(p*m>=t||this.winningMultiplier(p*m,t,memo)===0){memo.set(p,m);return m}memo.set(p,0);return 0},
+ compare(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return Math.sign(d)}return 0},
+ rank5(cards){const ranks=cards.map(c=>c%13+2).sort((a,b)=>b-a),flush=cards.every(c=>Math.floor(c/13)===Math.floor(cards[0]/13));let u=[...new Set(ranks)],straight=0;if(u.length===5){if(u[0]-u[4]===4)straight=u[0];else if(u.join()==='14,5,4,3,2')straight=5}let counts=new Map();ranks.forEach(r=>counts.set(r,(counts.get(r)||0)+1));let g=[...counts].sort((a,b)=>b[1]-a[1]||b[0]-a[0]);if(flush&&straight)return [8,straight];if(g[0][1]===4)return[7,g[0][0],g[1][0]];if(g[0][1]===3&&g[1][1]===2)return[6,g[0][0],g[1][0]];if(flush)return[5,...ranks];if(straight)return[4,straight];if(g[0][1]===3)return[3,g[0][0],...g.slice(1).map(x=>x[0])];if(g[0][1]===2&&g[1][1]===2)return[2,Math.max(g[0][0],g[1][0]),Math.min(g[0][0],g[1][0]),g[2][0]];if(g[0][1]===2)return[1,g[0][0],...g.slice(1).map(x=>x[0])];return[0,...ranks]},
+ bestHand(cards){let best={rank:[-1],cards:[]};for(let a=0;a<cards.length-4;a++)for(let b=a+1;b<cards.length-3;b++)for(let c=b+1;c<cards.length-2;c++)for(let d=c+1;d<cards.length-1;d++)for(let e=d+1;e<cards.length;e++){let h=[cards[a],cards[b],cards[c],cards[d],cards[e]],r=this.rank5(h);if(this.compare(r,best.rank)>0)best={rank:r,cards:h}}return best},
+ cube(){let s=[];const faces=[['U',1,1],['R',0,1],['F',2,1],['D',1,-1],['L',0,-1],['B',2,-1]];for(const [color,axis,side]of faces)for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){let p=[0,0,0],n=[0,0,0];p[axis]=side;n[axis]=side;p[(axis+1)%3]=a;p[(axis+2)%3]=b;s.push({p,n,color})}return s},
+ turn(cube,face,inv=false){const [ax,side]=({R:[0,1],L:[0,-1],U:[1,1],D:[1,-1],F:[2,1],B:[2,-1]})[face];const dir=-side*(inv?-1:1);const rot=v=>{let w=v.slice(),i=(ax+1)%3,j=(ax+2)%3;w[i]=-dir*v[j];w[j]=dir*v[i];return w};return cube.map(s=>s.p[ax]===side?{...s,p:rot(s.p),n:rot(s.n)}:s)},
+ cubeSolved(c){return ['U','R','F','D','L','B'].every(f=>{const [a,v]=({U:[1,1],R:[0,1],F:[2,1],D:[1,-1],L:[0,-1],B:[2,-1]})[f];return new Set(c.filter(s=>s.n[a]===v).map(s=>s.color)).size===1})}
+};
+if(typeof module!=='undefined')module.exports=Core;
