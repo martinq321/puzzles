@@ -1,0 +1,27 @@
+MATHS WEDNESDAYS — THREE HANDS-ON INVESTIGATIONS
+
+Copy these three HTML files into your existing sessions folder:
+  30-cubes.html
+  fewest-squares.html
+  36-fences.html
+
+Keep their filenames unchanged. Each page links to the other two.
+No separate CSS, JavaScript, images or internet connection are needed for the activities.
+The Home link returns to ../index.html on your website.
+Your existing homepage is not replaced or edited by this pack.
+
+Open 30-cubes.html to begin, or open any of the pages directly.
+Each includes Start / Explore / Go further prompts, optional hints,
+physical-material suggestions, local notes, and a collection of saved designs.
+Records save in the same browser on the same device; they do not sync between devices.
+Download my record exports notes and design data as JSON for keeping a copy.
+
+30 CUBES: dimension sliders and rotatable cuboids; 1–120 cubes;
+rotated duplicates recognised; optional surface area.
+FEWEST SQUARES: drag to draw a square, or choose a size and tap to place;
+tap a piece to remove it; undo; boards from 3 x 5 to 11 x 13.
+36 FENCES: start with rectangles, then edit individual grid edges;
+12, 16, 24 or 36 pieces; optional area and saved comparisons.
+
+The pages credit and link to the original Youcubed tasks.
+These are independently built interactive companions.
