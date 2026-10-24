@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painted cube · Maths Wednesdays</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f6f3eb;color:#243a55;font:16px system-ui,sans-serif}main{max-width:1250px;margin:auto;padding:24px}a{color:#197e75}h1{font-size:clamp(32px,5vw,52px);letter-spacing:-1.8px;margin:12px 0 8px}p{line-height:1.55}.brand{font-size:12px;letter-spacing:2px;font-weight:800;color:#197e75}.intro{margin:0 0 22px;color:#516571}button,select,input{font:inherit;color:inherit}button,select{border:1px solid #c5d2cc;border-radius:10px;background:white;padding:10px 14px;min-height:44px}button{cursor:pointer}button:hover:not(:disabled){background:#eaf3ed}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,svg:focus-visible{outline:3px solid #c88b28;outline-offset:3px}.primary{background:#197e75;color:#fff;border-color:#197e75}.primary:hover:not(:disabled){background:#116159}.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.panel{background:#fffefa;border:1px solid #d7dfd7;border-radius:20px;padding:20px;min-width:0}.layout{display:block;max-width:850px;margin:auto}.panel h2{font-size:21px;margin:0 0 12px}.stage{background:radial-gradient(ellipse at center,#eaf3f0,#f7f9f4);border-radius:15px;position:relative;margin:16px 0}svg{display:block;width:100%;height:390px;touch-action:none;user-select:none;cursor:grab}svg:active{cursor:grabbing}#inspect{height:220px}.small{font-size:13px;color:#536c73}.tag{display:inline-block;border-radius:20px;padding:5px 10px;background:#e2efea;color:#17665d;font-size:12px;font-weight:750}.face-buttons{display:flex;gap:6px;flex-wrap:wrap}.face-buttons button{font-size:13px;padding:8px;min-height:38px}.face-buttons button[aria-pressed=true]{background:#2479b9;color:#fff;border-color:#2479b9}.palette{display:flex;gap:8px;align-items:center}.swatch{width:32px;height:32px;padding:0;min-height:32px;border:3px solid transparent;border-radius:50%}.swatch[aria-pressed=true]{outline:2px solid #243a55;outline-offset:2px}.status{margin:16px 0;padding:13px 16px;min-height:50px;border-radius:12px;background:#e6efe7;line-height:1.5}#tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(47px,1fr));gap:6px;max-height:210px;overflow:auto;padding:4px}.cube-chip{padding:5px;min-height:42px;font-size:13px;background:#edf1ed;border-radius:8px}.cube-chip[aria-pressed=true]{outline:3px solid #ca913a;outline-offset:-3px;background:#fff0c9}.boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.box{border:2px solid #c4d2c9;border-top:7px solid #197e75;border-radius:12px;background:#fffefa;padding:12px;min-width:0}.box h3{font-size:17px;margin:0 0 8px}.box .put{width:100%;font-size:13px;padding:8px}.box-items{display:flex;flex-wrap:wrap;gap:5px;min-height:60px;margin-top:10px;max-height:140px;overflow:auto}.box-items button{font-size:12px;min-height:32px;padding:5px 8px}.box.over{background:#fff0c9;border-color:#c58e2c}.box-count{font-size:12px;color:#536c73}.incorrect{outline:2px solid #b96c26!important;background:#fff0d7!important}.drag-handle{width:100%;background:#e4eee9;touch-action:none;cursor:grab;font-weight:650}#ghost{position:fixed;pointer-events:none;z-index:100;background:#197e75;color:white;border-radius:12px;padding:12px;box-shadow:0 4px 15px #0003}.inspect-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.rotation{display:flex;gap:5px;justify-content:center;margin:7px 0}.rotation button{padding:5px 12px;min-height:35px}.divider{height:1px;background:#dbe4db;margin:18px 0}footer{font-size:12px;color:#60716f;margin:24px 0}details{margin:14px 0}summary{cursor:pointer;font-weight:650}#paint-tools[hidden],#sort-tools[hidden],[hidden]{display:none!important}@media(max-width:760px){main{padding:14px}.layout{grid-template-columns:1fr}.panel{padding:15px}svg{height:320px}#inspect{height:230px}.boxes{grid-template-columns:repeat(2,1fr)}.intro{font-size:14px}}
+
+#auto-buckets{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+.auto-bucket{border:3px solid #67978c;border-top:7px solid #197e75;border-radius:6px 6px 24px 24px;background:#e4eee9;text-align:center;padding:10px 2px;transition:background .2s}
+.auto-bucket.active{background:#ffe6a3;border-color:#b47b1c}
+.auto-bucket strong{display:block;font-size:24px}
+.auto-bucket span{font-size:11px}
+.auto-bucket b{display:block;font-size:12px;margin-top:5px}
+.flight-layer{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:500;overflow:visible}
+#stop-auto{position:fixed;right:20px;bottom:20px;z-index:501;background:#243a55;color:white;box-shadow:0 3px 15px #0003}
+</style></head><body><main><a href="../index.html">← Home</a><header><p class="brand">MATHS WEDNESDAYS / SHAPE & DISCOVERY</p><h1>Paint. Turn. Take apart.</h1><p class="intro">What happens to the paint when one big cube becomes lots of little ones?</p></header>
+<div class="toolbar"><label>Cube size <select id="size"><option value="2">2 × 2 × 2 — 8 cubes</option><option value="3" selected>3 × 3 × 3 — 27 cubes</option><option value="4">4 × 4 × 4 — 64 cubes</option><option value="5">5 × 5 × 5 — 125 cubes</option></select></label><button id="new">Start again</button><span id="phase" class="tag">1 · Paint the outside</span></div>
+<div class="toolbar" style="margin-top:14px"><label>Paint style <select id="type-colours"><option value="groups">Red / yellow / blue by face count</option><option value="blue" selected>Blue only</option></select></label><span id="colour-key" class="small"><b style="color:#c7352c">1 face · red</b> &nbsp; <b style="color:#826900">2 faces · yellow</b> &nbsp; <b style="color:#2468aa">3 faces · blue</b> &nbsp; 0 · white</span></div>
+<div id="status" class="status" role="status" aria-live="polite">Drag to turn the cube. Tap a face to paint that whole side.</div>
+<div class="layout"><section class="panel"><h2 id="world-title">Your big cube</h2><div id="paint-tools"><div class="toolbar"><button id="all">Paint all six faces</button><button id="erase">Clear paint</button></div><p class="small">Tap a face to paint it; tap again to remove its paint.</p></div>
+<div class="stage"><svg id="world" viewBox="0 0 600 430" role="img" aria-label="Rotatable large cube. Drag to rotate; tap a face to paint." tabindex="0"></svg></div>
+<div class="toolbar"><button id="auto" class="primary">Auto sort</button><button id="send-group" class="primary" hidden>Send to bucket</button><label id="spread-label" hidden>Spread <input id="spread" type="range" min="0" max="0.35" step=".05" value="0"></label></div><div id="auto-buckets" hidden></div><p id="world-note" class="small">White faces are unpainted. With colour coding on, red = 1, yellow = 2 and blue = 3 painted faces.</p></section>
+</div>
+<details><summary>Ideas to investigate</summary><p>Try a different cube size. What changes, and what stays the same? Where did cubes in each box come from? What happens if you paint just two opposite faces?</p></details><footer>An original interactive companion to <a href="https://www.youcubed.org/tasks/painted-cube/" target="_blank" rel="noopener">Youcubed’s Painted Cube investigation</a>. Works offline · no timer · rotate, inspect and watch Auto sort.</footer></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),faceNames=['Right','Left','Top','Bottom','Front','Back'];
+const F=[{n:[1,0,0],v:[[1,-1,-1],[1,1,-1],[1,1,1],[1,-1,1]]},{n:[-1,0,0],v:[[-1,-1,1],[-1,1,1],[-1,1,-1],[-1,-1,-1]]},{n:[0,1,0],v:[[-1,1,-1],[-1,1,1],[1,1,1],[1,1,-1]]},{n:[0,-1,0],v:[[-1,-1,1],[-1,-1,-1],[1,-1,-1],[1,-1,1]]},{n:[0,0,1],v:[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]]},{n:[0,0,-1],v:[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]]}];
+let autoPreview=null, releaseGroup=null;
+let n=3,paints=Array(6).fill(null),color='#287fbb',broken=false,cubes=[],selected=null,moves=[],checked=false;
+const views={world:{yaw:-.55,pitch:.45},inspect:{yaw:-.55,pitch:.45}};
+const say=t=>$('status').textContent=t;
+function rotate([x,y,z],v){const a=Math.cos(v.yaw)*x+Math.sin(v.yaw)*z,b=-Math.sin(v.yaw)*x+Math.cos(v.yaw)*z;return [a,Math.cos(v.pitch)*y-Math.sin(v.pitch)*b,Math.sin(v.pitch)*y+Math.cos(v.pitch)*b];}
+function flags(x,y,z){return [x===n-1,x===0,y===n-1,y===0,z===n-1,z===0].map((on,i)=>on?paints[i]:null);}
+function build(){cubes=[];for(let z=0;z<n;z++)for(let y=0;y<n;y++)for(let x=0;x<n;x++)cubes.push({id:cubes.length+1,x,y,z,paint:flags(x,y,z),box:null});}
+function count(c){return c.paint.filter(Boolean).length;}
+const typeColours=['#f6f2e9','#e34d43','#f4ce3d','#347fc4'];
+function faceInk(c,fi){return c.paint[fi]?($('type-colours').value==='groups'?typeColours[count(c)]:'#347fc4'):'#f6f2e9';}
+$('type-colours').onchange=()=>{render();};
+function cubeCentre(c,gap){return [c.x,c.y,c.z].map(v=>(v-(n-1)/2)*gap);}
+function render3D(id,items){const v=views[id],w=id==='world'?600:400,h=id==='world'?430:280,gap=broken&&id==='world'?1+Number($('spread').value):1,scale=id==='world'?Math.min(76,160/(n*.87)):81,faces=[];
+ for(const c of items){const centre=id==='inspect'?[0,0,0]:cubeCentre(c,gap);F.forEach((f,fi)=>{const norm=rotate(f.n,v);if(norm[2]<=.001)return;const points=f.v.map(p=>rotate(p.map((a,i)=>a*.48+centre[i]),v));const pts=points.map(p=>[w/2+p[0]*scale,h/2-p[1]*scale]);const dep=points.reduce((a,p)=>a+p[2],0)/4;const ink=faceInk(c,fi),light=.12+.18*(1-norm[2]);faces.push({dep,html:`<g data-cube="${c.id}" data-face="${fi}"><polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="${ink}" stroke="${selected===c.id&&broken?'#c78b22':'#344c5866'}" stroke-width="${selected===c.id&&broken?2.3:1}" stroke-linejoin="round"/><polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="#162c40" opacity="${light}" pointer-events="none"/></g>`});});}
+ $(id).innerHTML=faces.sort((a,b)=>a.dep-b.dep).map(f=>f.html).join('');
+}
+function draw(){if(!broken)build();render3D('world',cubes.filter(c=>c.box===null));}
+function render(){
+ $('colour-key').hidden=$('type-colours').value!=='groups';
+ $('paint-tools').hidden=broken;$('spread-label').hidden=!broken;
+ $('phase').textContent=broken?'2 · Inspect & sort':'1 · Paint the outside';
+ $('world-title').textContent=broken?'Cubes still to sort':'Your big cube';
+ $('world-note').textContent=broken?'Drag to rotate the cube. Send each group to its bucket when ready.':'White faces are unpainted. Red = 1, yellow = 2 and blue = 3 painted faces when colour coding is on.';
+ $('auto').disabled=broken&&!cubes.some(c=>c.box===null);draw();lockAutoControls();
+ if(!$('auto-buckets').hidden)for(const b of [3,2,1,0]){const label=$('auto-buckets').querySelector(`[data-auto-box="${b}"] b`);if(label)label.textContent=cubes.filter(c=>c.box===b).length+' sorted';}
+}
+function fresh(){$('spread').value='0';$('auto-buckets').hidden=true;n=+$('size').value;paints=Array(6).fill(null);broken=false;selected=null;moves=[];checked=false;views.world={yaw:-.55,pitch:.45};render();say('Drag to turn the cube. Tap a face to paint that whole side.');}
+$('size').onchange=()=>{if((broken||paints.some(Boolean))&&!confirm('Start a new cube and clear this investigation?')){$('size').value=n;return;}fresh();};$('new').onclick=()=>{if(confirm('Start again with an unpainted cube?'))fresh();};$('all').onclick=()=>{paints.fill(color);render();say('All six outside faces are painted. Turn the cube to check.');};$('erase').onclick=()=>{paints.fill(null);render();say('Paint cleared.');};
+$('spread').oninput=draw;
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(d.paint!==undefined&&!broken){const i=+d.paint;paints[i]=paints[i]?null:color;render();}else if(d.color){color=d.color;document.querySelectorAll('[data-color]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.color===color));}});
+for(const id of ['world']){const svg=$(id);let drag=null;svg.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false,face:e.target.closest('[data-face]')?.dataset.face,cube:e.target.closest('[data-cube]')?.dataset.cube};svg.setPointerCapture(e.pointerId);};svg.onpointermove=e=>{if(!drag)return;if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>5)drag.moved=true;if(drag.moved){views[id].yaw+=(e.clientX-drag.x)*.012;views[id].pitch+=(e.clientY-drag.y)*.012;draw();}drag.x=e.clientX;drag.y=e.clientY;};svg.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;if(!d.moved&&id==='world'){if(!broken&&d.face!==undefined){const i=+d.face;paints[i]=paints[i]?null:color;render();}}};svg.onpointercancel=()=>drag=null;svg.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();views[id].yaw+=e.key==='ArrowLeft'?-.25:e.key==='ArrowRight'?.25:0;views[id].pitch+=e.key==='ArrowUp'?.25:e.key==='ArrowDown'?-.25:0;draw();};}
+let autoRunning=false, stopRequested=false;
+function lockAutoControls(){
+ if(!autoRunning)return;
+ document.querySelectorAll('main button,main select,main input').forEach(el=>{
+  el.disabled=!(el.id==='send-group'||el.id==='spread'||(autoPreview&&el.dataset.select&&autoPreview.includes(+el.dataset.select)));
+ });
+}
+$('send-group').onclick=()=>releaseGroup?.();
+
+async function automaticSort(){
+ if(autoRunning)return;
+ const guided=true;
+ autoRunning=true;stopRequested=false;
+ if(!broken){build();broken=true;}
+ selected=null;checked=false;render();
+ const buckets=$('auto-buckets');
+ buckets.hidden=false;
+ buckets.innerHTML=[3,2,1,0].map(b=>`<div class="auto-bucket" data-auto-box="${b}"><strong>${b}</strong><span>painted ${b===1?'face':'faces'}</span><b>0 arriving</b></div>`).join('');
+ const main=document.querySelector('main');
+ const stop=document.createElement('button');stop.id='stop-auto';stop.textContent='Stop auto sort';
+ stop.onclick=()=>{stopRequested=true;releaseGroup?.();stop.textContent='Stopping…';stop.disabled=true;};
+ document.body.append(stop);main.inert=!guided;
+ $('world').scrollIntoView({block:'start',behavior:'instant'});
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ let layer;
+ try{
+  for(const b of [3,2,1,0]){
+   if(stopRequested)break;
+   const group=cubes.filter(c=>c.box===null&&count(c)===b);
+   const bucket=buckets.querySelector(`[data-auto-box="${b}"]`);
+   bucket.classList.add('active');
+   say(group.length?`Selecting ${group.length} cubes with ${b} painted ${b===1?'face':'faces'}…`:`No unsorted cubes with ${b} painted faces.`);
+   if(!group.length){await new Promise(r=>setTimeout(r,reduced?40:450));bucket.classList.remove('active');continue;}
+   autoPreview=group.map(c=>c.id);selected=null;main.inert=true;render();
+   if(guided){
+    $('send-group').hidden=false;main.inert=false;render();
+    $('world-title').textContent=`Explore the ${b}-face group`;
+    $('world-note').textContent='The selected group stays in place. Drag to rotate and count. Press Send to bucket when ready.';
+    say(`These cubes have ${b} painted ${b===1?'face':'faces'}. Take your time to inspect and count them. Send them to the bucket when ready.`);
+    await new Promise(resolve=>{releaseGroup=resolve;});
+    releaseGroup=null;$('send-group').hidden=true;
+    if(stopRequested)break;
+    selected=null;render();main.inert=true;
+   }
+   layer=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   layer.classList.add('flight-layer');layer.setAttribute('aria-hidden','true');
+   document.body.append(layer);
+   const matrix=$('world').getScreenCTM();
+   const flights=group.map(c=>{
+    const outer=document.createElementNS(layer.namespaceURI,'g');
+    const inner=document.createElementNS(layer.namespaceURI,'g');
+    inner.setAttribute('transform',`matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`);
+    const original=[...$('world').querySelectorAll(`[data-cube="${c.id}"]`)];
+    original.forEach(face=>{inner.append(face.cloneNode(true));face.style.visibility='hidden';});
+    outer.append(inner);layer.append(outer);
+    const gap=1+Number($('spread').value),scale=Math.min(76,160/(n*.87));
+    const pos=rotate(cubeCentre(c,gap),views.world);
+    const point=new DOMPoint(300+pos[0]*scale,215-pos[1]*scale).matrixTransform(matrix);
+    return {outer,point};
+   });
+   say(`Moving ${group.length} cubes into the ${b}-face box…`);
+   const rect=bucket.getBoundingClientRect();
+   await Promise.all(flights.map(({outer,point},i)=>{
+    const dx=rect.left+rect.width/2-point.x+((i%3)-1)*5;
+    const dy=rect.top+rect.height*.5-point.y;
+    return outer.animate([
+     {transform:'translate(0,0)',opacity:1},
+     {transform:`translate(${dx}px,${dy-30}px)`,opacity:1,offset:.8},
+     {transform:`translate(${dx}px,${dy}px)`,opacity:0}
+    ],{duration:reduced?80:1100,easing:'ease-in-out',fill:'forwards'}).finished;
+   }));
+   moves.push({batch:group.map(c=>({id:c.id,box:c.box}))});
+   group.forEach(c=>c.box=b);
+   layer.remove();layer=null;autoPreview=null;render();
+   bucket.querySelector('b').textContent=group.length+' sorted';
+   bucket.classList.remove('active');
+   await new Promise(r=>setTimeout(r,reduced?40:350));
+  }
+ }finally{
+  layer?.remove();autoPreview=null;releaseGroup=null;selected=null;$('send-group').hidden=true;main.inert=false;stop.remove();autoRunning=false;document.querySelectorAll('main button,main select,main input').forEach(el=>el.disabled=false);render();
+ }
+ const remaining=cubes.filter(c=>c.box===null).length;
+ const wrong=cubes.filter(c=>c.box!==null&&c.box!==count(c)).length;
+ say(stopRequested?`Auto sort stopped. ${remaining} cubes still unsorted.`:wrong?'Unsorted cubes sorted. Some earlier placements still need checking.':'All cubes sorted — 3 painted faces, then 2, 1 and 0.');
+}
+$('auto').onclick=automaticSort;
+
+fresh();
+</script></body></html>
