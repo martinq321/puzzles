@@ -9,7 +9,7 @@
 .auto-bucket b{display:block;font-size:12px;margin-top:5px}
 .flight-layer{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:500;overflow:visible}
 #stop-auto{position:fixed;right:20px;bottom:20px;z-index:501;background:#243a55;color:white;box-shadow:0 3px 15px #0003}
-</style></head><body><main><a href="../index.html">← Home</a><header><p class="brand">MATHS WEDNESDAYS / SHAPE & DISCOVERY</p><h1>Paint. Turn. Take apart.</h1><p class="intro">What happens to the paint when one big cube becomes lots of little ones?</p></header>
+</style><link rel="stylesheet" href="../site-ux.css"></head><body><main><a href="../index.html">← Home</a><header><p class="brand">MATHS WEDNESDAYS / SHAPE & DISCOVERY</p><h1>Paint. Turn. Take apart.</h1><p class="intro">What happens to the paint when one big cube becomes lots of little ones?</p></header>
 <div class="toolbar"><label>Cube size <select id="size"><option value="2">2 × 2 × 2 — 8 cubes</option><option value="3" selected>3 × 3 × 3 — 27 cubes</option><option value="4">4 × 4 × 4 — 64 cubes</option><option value="5">5 × 5 × 5 — 125 cubes</option><option value="6">6 × 6 × 6 — 216 cubes</option><option value="7">7 × 7 × 7 — 343 cubes</option></select></label><button id="new">Start again</button><span id="phase" class="tag">1 · Paint the outside</span></div>
 <div class="toolbar" style="margin-top:14px"><label>Paint style <select id="type-colours"><option value="groups">Red / yellow / blue by face count</option><option value="blue" selected>Blue only</option></select></label><span id="colour-key" class="small"><b style="color:#c7352c">1 face · red</b> &nbsp; <b style="color:#826900">2 faces · yellow</b> &nbsp; <b style="color:#2468aa">3 faces · blue</b> &nbsp; 0 · white</span></div>
 <div id="status" class="status" role="status" aria-live="polite">Drag to turn the cube. Tap a face to paint that whole side.</div>
@@ -34,7 +34,8 @@ const typeColours=['#f6f2e9','#e34d43','#f4ce3d','#347fc4'];
 function faceInk(c,fi){return c.paint[fi]?($('type-colours').value==='groups'?typeColours[count(c)]:'#347fc4'):'#f6f2e9';}
 $('type-colours').onchange=()=>{render();};
 function cubeCentre(c,gap){return [c.x,c.y,c.z].map(v=>(v-(n-1)/2)*gap);}
-function render3D(id,items){const v=views[id],w=id==='world'?600:400,h=id==='world'?430:280,gap=broken&&id==='world'?1+Number($('spread').value):1,scale=id==='world'?Math.min(76,160/(n*.87)):81,faces=[];
+function fittedCubeScale(gap){const span=(n-1)*gap+.96;return Math.min(76,160/(n*.87),(430-48)/(Math.sqrt(3)*span));}
+function render3D(id,items){const v=views[id],w=id==='world'?600:400,h=id==='world'?430:280,gap=broken&&id==='world'?1+Number($('spread').value):1,scale=id==='world'?fittedCubeScale(gap):81,faces=[];
  for(const c of items){const centre=id==='inspect'?[0,0,0]:cubeCentre(c,gap);F.forEach((f,fi)=>{const norm=rotate(f.n,v);if(norm[2]<=.001)return;const points=f.v.map(p=>rotate(p.map((a,i)=>a*.48+centre[i]),v));const pts=points.map(p=>[w/2+p[0]*scale,h/2-p[1]*scale]);const dep=points.reduce((a,p)=>a+p[2],0)/4;const ink=faceInk(c,fi),light=.12+.18*(1-norm[2]);faces.push({dep,html:`<g data-cube="${c.id}" data-face="${fi}"><polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="${ink}" stroke="${selected===c.id&&broken?'#c78b22':'#344c5866'}" stroke-width="${selected===c.id&&broken?2.3:1}" stroke-linejoin="round"/><polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="#162c40" opacity="${light}" pointer-events="none"/></g>`});});}
  $(id).innerHTML=faces.sort((a,b)=>a.dep-b.dep).map(f=>f.html).join('');
 }
@@ -108,7 +109,7 @@ async function automaticSort(){
     const original=[...$('world').querySelectorAll(`[data-cube="${c.id}"]`)];
     original.forEach(face=>{inner.append(face.cloneNode(true));face.style.visibility='hidden';});
     outer.append(inner);layer.append(outer);
-    const gap=1+Number($('spread').value),scale=Math.min(76,160/(n*.87));
+    const gap=1+Number($('spread').value),scale=fittedCubeScale(gap);
     const pos=rotate(cubeCentre(c,gap),views.world);
     const point=new DOMPoint(300+pos[0]*scale,215-pos[1]*scale).matrixTransform(matrix);
     return {outer,point};
@@ -141,4 +142,4 @@ async function automaticSort(){
 $('auto').onclick=automaticSort;
 
 fresh();
-</script></body></html>
+</script><script src="../site-ux.js" defer></script></body></html>
