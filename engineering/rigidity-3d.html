@@ -41,7 +41,7 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 .note{padding:10px 12px;border-radius:10px;background:#f4f6f8;color:var(--muted);font-size:.9rem}
 @media(max-width:900px){.layout{grid-template-columns:1fr}}
 </style>
-<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style></head>
+<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style><link rel="stylesheet" href="../site-ux.css"><link rel="stylesheet" href="../theme.css"><script defer src="../theme.js"></script></head>
 <body>
 <main>
 <nav class="mw-nav" aria-label="Site navigation"><a href="../index.html">← Home</a><a href="rigidity-2d.html">2D rigidity</a><a href="rigidity-3d.html" aria-current="page">3D rigidity</a><a href="bridge-lab.html">Bridge lab</a></nav>
@@ -254,15 +254,17 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
     };
   }
 
+  function fittedZoom(){const radius=Math.max(1.2,...nodes.map(n=>Math.hypot(n.x,n.y,n.z)));return Math.min(zoom,(Math.min(canvas.width,canvas.height)-90)/(2*radius));}
+
   function project(p){
     const r=rotatePoint(p);
     const cx=canvas.width/2, cy=canvas.height/2;
-    return {sx:cx+r.x*zoom, sy:cy-r.y*zoom, depth:r.z, r};
+    return {sx:cx+r.x*fittedZoom(), sy:cy-r.y*fittedZoom(), depth:r.z, r};
   }
 
   function screenToWorldPlane(sx,sy,depth=0){
-    const rx=(sx-canvas.width/2)/zoom;
-    const ry=-(sy-canvas.height/2)/zoom;
+    const rx=(sx-canvas.width/2)/fittedZoom();
+    const ry=-(sy-canvas.height/2)/fittedZoom();
     return invRotateVector({x:rx,y:ry,z:depth});
   }
 
@@ -490,7 +492,7 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 
   function moveSelectedScreen(dx,dy){
     if(selected===null||!nodes[selected]||nodes[selected].pinned) return;
-    const v=invRotateVector({x:dx/zoom,y:-dy/zoom,z:0});
+    const v=invRotateVector({x:dx/fittedZoom(),y:-dy/fittedZoom(),z:0});
     nodes[selected].x+=v.x;nodes[selected].y+=v.y;nodes[selected].z+=v.z;
     solve();render();
   }
@@ -598,5 +600,5 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
   loadPreset('tetra');
 })();
 </script>
-</body>
+<script src="../site-ux.js" defer></script></body>
 </html>

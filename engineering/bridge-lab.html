@@ -52,7 +52,7 @@ th{position:sticky;top:0;background:#f8f9fb}
 #chart{border:1px solid var(--border);border-radius:9px;background:#fff}
 @media(max-width:950px){.layout{grid-template-columns:1fr}.control input[type=range]{width:130px}}
 </style>
-<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style></head>
+<style>.mw-nav{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:0 0 22px;font:600 14px system-ui,sans-serif}.mw-nav a{display:inline-flex;align-items:center;min-height:44px;color:#126b64;text-decoration:none}.mw-nav a:hover{text-decoration:underline}.mw-nav a[aria-current]{color:#52615a;text-decoration:underline}.mw-nav a:focus-visible{outline:3px solid #cc7912;outline-offset:4px}</style><link rel="stylesheet" href="../site-ux.css"><link rel="stylesheet" href="../theme.css"><script defer src="../theme.js"></script></head>
 <body>
 <main>
 <nav class="mw-nav" aria-label="Site navigation"><a href="../index.html">← Home</a><a href="rigidity-2d.html">2D rigidity</a><a href="rigidity-3d.html">3D rigidity</a><a href="bridge-lab.html" aria-current="page">Bridge lab</a></nav>
@@ -845,5 +845,5 @@ document.getElementById('utilBtn').addEventListener('click',()=>{display='util';
 loadTemplate('warren');
 })();
 </script>
-</body>
+<script src="../site-ux.js" defer></script></body>
 </html>
