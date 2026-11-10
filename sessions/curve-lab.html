@@ -13,8 +13,8 @@ body{color:var(--ink);background:var(--bg)}header{align-items:center;border-colo
 'use strict';
 const $=id=>document.getElementById(id),s=$('s'),ui=$('ui'),say=t=>$('msg').textContent=t;
 const themeMenu=$('theme'),themeKey='mw.theme.v2';
-function chooseTheme(v){const name=['field','orbit','press'].includes(v)?v:'field';document.documentElement.dataset.theme=name;themeMenu.value=name}
-try{chooseTheme(localStorage.getItem(themeKey))}catch{chooseTheme('field')}
+function chooseTheme(v){const name=['field','orbit','press'].includes(v)?v:'orbit';document.documentElement.dataset.theme=name;themeMenu.value=name}
+try{chooseTheme(localStorage.getItem(themeKey))}catch{chooseTheme('orbit')}
 themeMenu.onchange=()=>{chooseTheme(themeMenu.value);try{localStorage.setItem(themeKey,themeMenu.value)}catch{}};
 const names=['Ramp race','Coordinate map','Ellipse pool','Radar dish'],ids=['race','map','pool','radar'],titles=['Which ramp wins?','Map the winning ramp','One cushion. One pocket.','Catch a radar signal'],leads=['Can a longer ramp get you there sooner?','Tap each survey mark: across first, then up.','Pull back from the white ball. Let go to shoot.','Where should the receiver go to catch all five rays?'],papers=['Show each other the steepest bit of the BMX ramp. Where would a bead pick up speed first? Sketch two tracks with the same endpoints. This race models sliding beads released from rest, without friction; it does not model a rider pedalling or jumping.','On squared paper, draw axes from 0 to 12 across and 0 to 8 up. Copy the survey marks, then sketch one smooth curve. The marks are rounded to whole squares; the wheel traces the exact cycloid.','Draw an ellipse with a loop of string around two fixed pins, keeping the string taut with a pencil. Pick a cushion point and measure the two straight legs to the pins. Does their total change when you choose another point?','Sketch the dish from the side. Draw three parallel incoming rays, then add their paths after reflection. Reverse the arrows: what would a transmitter at the focus do?'];
 document.querySelector('nav').innerHTML=ids.map((k,i)=>'<a href="#'+k+'">'+names[i]+'</a>').join('');
