@@ -1,0 +1,8 @@
+Upload the complete string-lab folder inside sessions in any Maths Wednesdays repository. Open sessions/string-lab/index.html. Add a homepage card linking to that path. Existing site index files are not replaced by this pack.
+
+Offline: unzip and open string-lab/index.html. Keep lab.js and lab.css alongside the HTML files. No install or internet needed.
+
+Nails: build one string at a time or tap both endpoints. Download the printable SVG template from the page.
+3D: drag or focus the model and use arrow keys. All angles, zooms and model parameters are independent.
+
+Four activities are implemented; the development-plan page records future work. Browser controls and geometric invariants were checked. No physical touchscreen device test was available. The linked video contents were not retrievable during development.

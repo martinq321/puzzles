@@ -1,0 +1,20 @@
+{
+  "module": "String Lab",
+  "date": "2026-11-15",
+  "status": "built",
+  "entry": "index.html",
+  "pages": [
+    "nails.html",
+    "hyperbola.html",
+    "saddle.html",
+    "tower.html"
+  ],
+  "planned_not_built": [
+    "straight-sided pool reflection",
+    "projectiles under uniform gravity",
+    "conic sections",
+    "KS2 curriculum pathways",
+    "other key stages"
+  ],
+  "notes": "Parabolic string envelope is distinguished from true hyperbola. Accessibility and analytical depth are separate educator dimensions."
+}
